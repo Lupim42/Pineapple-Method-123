@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>FERRO</title>
+<meta name="description" content="Diário de treino pessoal. Dados 100% no aparelho.">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FERRO">
+<meta name="theme-color" content="#0C0E12">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<style>
+:root{
+  --bg:#0C0E12; --surface:#151920; --surface2:#1D232D; --line:#262E3A;
+  --text:#E9ECF1; --muted:#8B94A3; --faint:#5A6272;
+  --accent:#FFB454; --accent-ink:#241703;
+  --steel:#7FB2E5; --good:#68D391; --bad:#F87171;
+  --radius:14px;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{font-size:16px}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+  min-height:100dvh; overscroll-behavior-y:none;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,select{font:inherit;color:var(--text);background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;outline:none;min-width:0}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+input[type=number]{-moz-appearance:textfield;text-align:center;font-variant-numeric:tabular-nums}
+input::placeholder{color:var(--faint);font-weight:400;opacity:.7}
+input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none}
+
+/* ---------- shell ---------- */
+#topbar{
+  position:fixed;top:0;left:0;right:0;z-index:30;
+  padding:calc(var(--sat) + 10px) 18px 10px;
+  display:flex;align-items:center;justify-content:space-between;
+  background:linear-gradient(to bottom,rgba(12,14,18,.96),rgba(12,14,18,.88));
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(38,46,58,.6);
+}
+.wordmark{font-weight:900;letter-spacing:.42em;font-size:15px;color:var(--text)}
+.wordmark b{color:var(--accent)}
+#topbar .iconbtn{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:12px;color:var(--muted);font-size:19px}
+#view{
+  padding:calc(var(--sat) + 64px) 16px calc(var(--sab) + 140px);
+  max-width:560px;margin:0 auto;
+}
+#tabbar{
+  position:fixed;bottom:0;left:0;right:0;z-index:30;
+  display:flex;justify-content:space-around;
+  padding:8px 8px calc(var(--sab) + 8px);
+  background:rgba(16,19,25,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border-top:1px solid var(--line);
+}
+#tabbar button{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  color:var(--faint);font-size:10.5px;font-weight:600;letter-spacing:.02em;padding:4px 0;border-radius:10px;
+}
+#tabbar button .ic{font-size:20px;line-height:1}
+#tabbar button.on{color:var(--accent)}
+
+/* ---------- generic ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:12px}
+.h1{font-size:24px;font-weight:800;letter-spacing:-.02em;margin:6px 0 14px}
+.h2{font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:20px 0 10px}
+.muted{color:var(--muted)} .faint{color:var(--faint)} .small{font-size:12.5px}
+.num{font-variant-numeric:tabular-nums}
+.row{display:flex;align-items:center;gap:10px}
+.spread{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.btn{
+  display:block;width:100%;text-align:center;padding:14px;border-radius:var(--radius);
+  font-weight:800;font-size:16px;background:var(--surface2);border:1px solid var(--line);
+}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--bad);border-color:rgba(248,113,113,.35)}
+.btn.slim{padding:10px;font-size:14px}
+.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.03em}
+.chip.side{background:rgba(127,178,229,.15);color:var(--steel)}
+.chip.ss{background:rgba(255,180,84,.14);color:var(--accent)}
+.chip.pr{background:var(--accent);color:var(--accent-ink)}
+.linkrow{display:flex;justify-content:space-between;align-items:center;padding:13px 2px;border-bottom:1px solid var(--line);width:100%;text-align:left}
+.linkrow:last-child{border-bottom:none}
+.arrow{color:var(--faint)}
+
+/* ---------- home ---------- */
+.hero{
+  background:linear-gradient(145deg,#1A2029 0%,#12161d 70%);
+  border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:12px;
+  position:relative;overflow:hidden;
+}
+.hero::after{content:"";position:absolute;right:-30px;top:-30px;width:120px;height:120px;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,180,84,.16),transparent 70%)}
+.hero .eyebrow{font-size:11px;font-weight:800;letter-spacing:.22em;color:var(--accent);text-transform:uppercase;margin-bottom:6px}
+.hero .title{font-size:26px;font-weight:900;letter-spacing:-.02em;margin-bottom:2px}
+.hero .sub{color:var(--muted);font-size:13px;margin-bottom:14px}
+.statrow{display:flex;gap:10px;margin-bottom:12px}
+.stat{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px}
+.stat .v{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
+.stat .l{font-size:11px;color:var(--muted);margin-top:1px}
+
+/* ---------- calendar ---------- */
+.cal{margin-top:4px}
+.cal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.cal-head .m{font-weight:800;font-size:15px;text-transform:capitalize}
+.cal-head button{width:36px;height:36px;border-radius:10px;background:var(--surface2);border:1px solid var(--line);color:var(--muted);font-size:16px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-grid .dow{text-align:center;font-size:10.5px;color:var(--faint);font-weight:700;padding:4px 0}
+.cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;font-size:13px;color:var(--muted);position:relative;font-variant-numeric:tabular-nums}
+.cal-day.trained{background:rgba(255,180,84,.13);color:var(--text);font-weight:700}
+.cal-day.trained::after{content:"";width:5px;height:5px;border-radius:50%;background:var(--accent);position:absolute;bottom:5px}
+.cal-day.today{outline:1.5px solid var(--steel);outline-offset:-1.5px}
+.cal-day.off{opacity:.25}
+
+/* ---------- workout active ---------- */
+.wo-head{margin-bottom:14px}
+.wo-head .name{font-size:22px;font-weight:900;letter-spacing:-.02em}
+.wo-head .clock{color:var(--accent);font-weight:800;font-variant-numeric:tabular-nums;font-size:15px}
+.ex-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 12px 8px;margin-bottom:10px}
+.ex-card.ss1{border-left:3px solid var(--accent)}
+.ex-name{font-weight:800;font-size:15.5px;line-height:1.25}
+.ex-meta{font-size:12px;color:var(--muted);margin-top:2px;margin-bottom:8px}
+.set-grid{display:grid;grid-template-columns:30px 1fr 64px 58px 44px;gap:8px;align-items:center;padding:5px 0}
+.set-grid.hd{color:var(--faint);font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding-bottom:2px}
+.set-grid .sn{color:var(--faint);font-weight:700;font-size:13px;text-align:center}
+.set-grid .prev{color:var(--faint);font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
+.set-grid input{padding:9px 4px;font-size:15px;font-weight:700}
+.set-grid .ck{
+  width:44px;height:40px;border-radius:10px;border:1.5px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--faint);background:var(--surface2);
+}
+.set-grid.done input{background:transparent;border-color:transparent;color:var(--good)}
+.set-grid.done .ck{background:rgba(104,211,145,.16);border-color:transparent;color:var(--good)}
+.addset{color:var(--steel);font-weight:700;font-size:13px;padding:8px 2px 6px}
+.warm .sn{color:var(--steel)}
+
+/* ---------- rest bar (signature) ---------- */
+#restbar{
+  position:fixed;left:0;right:0;z-index:40;
+  bottom:calc(var(--sab) + 66px);
+  background:#171207;border-top:1px solid rgba(255,180,84,.4);
+  display:none;
+}
+#restbar.on{display:block}
+#restbar .fill{position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,180,84,.28),rgba(255,180,84,.10));transform-origin:left;pointer-events:none}
+#restbar .inner{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 16px;max-width:560px;margin:0 auto}
+#restbar .t{font-size:30px;font-weight:900;font-variant-numeric:tabular-nums;color:var(--accent);letter-spacing:-.01em;min-width:100px}
+#restbar .lbl{font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-weight:700}
+#restbar .rb{padding:9px 13px;border-radius:10px;background:rgba(255,180,84,.14);color:var(--accent);font-weight:800;font-size:13px}
+#restbar.zero .t{color:var(--good)}
+@media (prefers-reduced-motion:no-preference){
+  #restbar.zero{animation:pulse .9s ease-in-out infinite alternate}
+  @keyframes pulse{from{background:#171207}to{background:#20340f}}
+}
+
+/* ---------- history / detail ---------- */
+.wo-item{display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:13px 14px;margin-bottom:10px}
+.wo-item .nm{font-weight:800;font-size:15px}
+.wo-item .meta{color:var(--muted);font-size:12.5px;margin-top:3px;font-variant-numeric:tabular-nums}
+.detail-ex{padding:10px 0;border-bottom:1px solid var(--line)}
+.detail-ex:last-child{border-bottom:none}
+.detail-ex .nm{font-weight:700;font-size:14.5px;margin-bottom:6px}
+.detail-set{display:flex;gap:14px;font-size:13.5px;color:var(--muted);font-variant-numeric:tabular-nums;padding:2px 0}
+.detail-set b{color:var(--text);font-weight:700}
+
+/* ---------- charts ---------- */
+.chartbox{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 10px 8px;margin-bottom:12px}
+.chartbox .cap{font-size:12px;color:var(--muted);padding:0 6px 6px;display:flex;justify-content:space-between}
+.seg{display:flex;background:var(--surface2);border:1px solid var(--line);border-radius:11px;padding:3px;margin-bottom:12px}
+.seg button{flex:1;padding:8px 4px;border-radius:8px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.seg button.on{background:var(--accent);color:var(--accent-ink)}
+svg text{font-family:inherit}
+
+/* ---------- plan editor ---------- */
+.pl-ex{border-bottom:1px solid var(--line);padding:11px 0}
+.pl-ex:last-child{border-bottom:none}
+.pl-ex .nm{font-weight:700;font-size:14.5px;flex:1}
+.pl-ctl{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.pl-ctl label{font-size:11px;color:var(--faint);display:flex;flex-direction:column;gap:3px;font-weight:700}
+.pl-ctl input{width:58px;padding:7px 4px;font-size:14px}
+.mini{width:34px;height:34px;border-radius:9px;background:var(--surface2);border:1px solid var(--line);color:var(--muted);font-size:14px;display:flex;align-items:center;justify-content:center}
+
+/* ---------- modal sheet ---------- */
+#sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;display:none}
+#sheet-bg.on{display:block}
+#sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:51;transform:translateY(105%);
+  background:var(--surface);border-radius:20px 20px 0 0;border-top:1px solid var(--line);
+  padding:18px 18px calc(var(--sab) + 20px);max-width:560px;margin:0 auto;max-height:82dvh;overflow:auto;
+  transition:transform .25s ease;
+}
+#sheet.on{transform:none}
+@media (prefers-reduced-motion:reduce){#sheet{transition:none}}
+.sheet-title{font-size:18px;font-weight:800;margin-bottom:12px}
+.summary-big{font-size:34px;font-weight:900;letter-spacing:-.02em;color:var(--accent);font-variant-numeric:tabular-nums}
+.toast{
+  position:fixed;top:calc(var(--sat) + 66px);left:50%;transform:translateX(-50%);z-index:60;
+  background:var(--surface2);border:1px solid var(--line);color:var(--text);
+  padding:10px 16px;border-radius:12px;font-size:13.5px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.5);
+  white-space:nowrap;
+}
+</style>
+</head>
+<body>
+<header id="topbar">
+  <span class="wordmark">FER<b>RO</b></span>
+  <button class="iconbtn" data-nav="settings" aria-label="Ajustes">⚙︎</button>
+</header>
+<main id="view"></main>
+<div id="restbar" role="timer">
+  <div class="fill"></div>
+  <div class="inner">
+    <div>
+      <div class="lbl" id="rest-lbl">Descanso</div>
+      <div class="t num" id="rest-t">1:30</div>
+    </div>
+    <div class="row">
+      <button class="rb" id="rest-plus">+15s</button>
+      <button class="rb" id="rest-skip">Pular</button>
+    </div>
+  </div>
+</div>
+<nav id="tabbar">
+  <button data-nav="home"><span class="ic">◉</span>Início</button>
+  <button data-nav="history"><span class="ic">☰</span>Histórico</button>
+  <button data-nav="progress"><span class="ic">↗</span>Progresso</button>
+  <button data-nav="plan"><span class="ic">▤</span>Plano</button>
+</nav>
+<div id="sheet-bg"></div>
+<div id="sheet" role="dialog" aria-modal="true"></div>
+<script>
+window.SEED = {"v":1,"settings":{"restDefault":90},"routines":[{"id":"A","name":"Treino A","exercises":[{"name":"Supino Inclinado (Halter)","sets":3,"repsMin":8,"repsMax":12,"rest":90},{"name":"Remada Unilateral (Halter)","sets":3,"repsMin":8,"repsMax":12,"rest":90,"perSide":true},{"name":"Agachamento Búlgaro","sets":3,"repsMin":8,"repsMax":10,"rest":90,"perSide":true},{"name":"Desenvolvimento Sentado (Halter)","sets":3,"repsMin":8,"repsMax":12,"rest":90},{"name":"Roda Abdominal","sets":3,"repsMin":10,"repsMax":15,"rest":90}]},{"id":"B","name":"Treino B","exercises":[{"name":"Supino Reto / Floor Press (Halter)","sets":3,"repsMin":8,"repsMax":12,"rest":90},{"name":"Remada Curvada (2 Halteres)","sets":3,"repsMin":8,"repsMax":12,"rest":90},{"name":"Terra Romeno (Halter)","sets":3,"repsMin":10,"repsMax":12,"rest":90},{"name":"Elevação Lateral (Halter)","sets":3,"repsMin":12,"repsMax":15,"rest":90},{"name":"Elevação de Quadril (escápulas no banco)","sets":3,"repsMin":10,"repsMax":15,"rest":90}]},{"id":"C","name":"Treino C","exercises":[{"name":"Supino Declinado / Crucifixo Inclinado","sets":3,"repsMin":10,"repsMax":12,"rest":90},{"name":"Remada Peito Apoiado (Banco Inclinado)","sets":3,"repsMin":10,"repsMax":12,"rest":90},{"name":"Afundo Reverso","sets":3,"repsMin":8,"repsMax":10,"rest":90,"perSide":true},{"name":"Rosca Inclinada (Halter)","sets":2,"repsMin":10,"repsMax":12,"rest":90,"superset":1},{"name":"Tríceps Testa (Halter)","sets":2,"repsMin":10,"repsMax":12,"rest":90,"superset":1},{"name":"Face Pull (Elástico)","sets":3,"repsMin":15,"repsMax":20,"rest":90}]}],"workouts":[],"bodyweight":[]};
+</script>
+<script src="app.js"></script>
+</body>
+</html>
