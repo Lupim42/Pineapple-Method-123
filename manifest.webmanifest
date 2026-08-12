@@ -1,14 +1,23 @@
 {
-  "name": "FERRO — Diário de Treino",
-  "short_name": "FERRO",
-  "start_url": "./",
-  "scope": "./",
-  "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#0C0E12",
-  "theme_color": "#0C0E12",
-  "icons": [
-    {"src": "icon-180.png", "sizes": "180x180", "type": "image/png"},
-    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
-  ]
+ "name": "Pineapple Method \u2014 Di\u00e1rio de Treino",
+ "short_name": "Pineapple",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "orientation": "portrait",
+ "background_color": "#0C0E12",
+ "theme_color": "#0C0E12",
+ "icons": [
+  {
+   "src": "icon-180.png",
+   "sizes": "180x180",
+   "type": "image/png"
+  },
+  {
+   "src": "icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any maskable"
+  }
+ ]
 }

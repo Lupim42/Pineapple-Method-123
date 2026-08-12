@@ -1,4 +1,4 @@
-/* FERRO — diário de treino pessoal. Dados 100% locais (localStorage). */
+/* PINEAPPLE METHOD — diário de treino pessoal. Dados 100% locais (localStorage). */
 'use strict';
 
 /* ================= utils ================= */
@@ -754,7 +754,7 @@ function vSettings(){
     </div>
     <div class="h2">Zona de risco</div>
     <div class="card"><button class="btn danger slim" data-a="wipe">Apagar todos os dados</button></div>
-    <p class="faint small" style="text-align:center;margin-top:6px">FERRO v1 · ${db.workouts.length} treinos no aparelho</p>`;
+    <p class="faint small" style="text-align:center;margin-top:6px">PINEAPPLE METHOD v1 · ${db.workouts.length} treinos no aparelho</p>`;
   $('#s-rest').addEventListener('change', () => {
     const v = parseInt($('#s-rest').value,10);
     if (isFinite(v) && v >= 10){ db.settings.restDefault = v; save(); toast('Salvo'); }
@@ -777,7 +777,7 @@ function exportJSON(){
   const blob = new Blob([JSON.stringify(db, null, 1)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `ferro-backup-${ymd(d)}.json`;
+  a.download = `pineapple-backup-${ymd(d)}.json`;
   a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   toast('Backup gerado');
 }
