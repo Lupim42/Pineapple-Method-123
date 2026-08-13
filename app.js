@@ -55,7 +55,7 @@ const woSorted = () => [...db.workouts].sort((a,b) => dt(b.start) - dt(a.start))
 function woVolume(w){
   let v = 0;
   for (const ex of w.exercises) for (const s of ex.sets)
-    if (s.t !== 'w' && s.w != null && s.r != null) v += s.w * s.r;
+    if (s.t !== 'w' && s.w != null && s.r != null) v += s.w * (s.r + (s.r2 || 0));
   return v;
 }
 function woSets(w){ return w.exercises.reduce((a,ex) => a + ex.sets.filter(s => s.t !== 'w').length, 0); }
@@ -77,9 +77,10 @@ function exHistory(name){ // asc by date, one point per workout
         sets.push(s);
         if (s.w != null && s.r != null){
           if (s.t !== 'w'){
-            vol += s.w * s.r;
+            vol += s.w * (s.r + (s.r2 || 0));
             if (bw === null || s.w > bw) bw = s.w;
-            const e = epley(s.w, s.r);
+            const reff = s.r2 != null ? Math.min(s.r, s.r2) : s.r; // unilateral: perna mais fraca
+            const e = epley(s.w, reff);
             if (be === null || e > be) be = e;
           }
         }
@@ -214,16 +215,33 @@ function vWorkout(){
   const a = db.active;
   if (!a){ nav('home'); return; }
   const els = a.exercises.map((ex,xi) => {
+    const side = !!ex.perSide;
     const rows = ex.sets.map((s,si) => {
       const p = ex.prev[si];
-      const ghost = p && p.w != null ? `${nbr(p.w, p.w%1?1:0)} × ${p.r ?? '–'}` : (p && p.d ? `${Math.round(p.d/60)} min` : '—');
-      return `<div class="set-grid ${s.done?'done':''} ${s.t==='w'?'warm':''}">
+      const pr = p && p.r != null ? (p.r2 != null ? `${p.r}/${p.r2}` : p.r) : null;
+      const ghost = p && p.w != null ? `${nbr(p.w, p.w%1?1:0)} × ${pr ?? '–'}` : (p && p.d ? `${Math.round(p.d/60)} min` : '—');
+      // cascata: valores desta sessão têm prioridade sobre a sessão anterior
+      let cw = null, cr = null, cr2 = null;
+      for (let j = si-1; j >= 0; j--){
+        const q = ex.sets[j];
+        if (cw == null && q.w != null) cw = q.w;
+        if (cr == null && q.r != null) cr = q.r;
+        if (cr2 == null && q.r2 != null) cr2 = q.r2;
+        if (cw != null && cr != null) break;
+      }
+      const phW = cw != null ? nbr(cw, cw%1?1:0) : (p && p.w != null ? nbr(p.w, p.w%1?1:0) : 'kg');
+      const phR = cr != null ? cr : (p && p.r != null ? p.r : 'reps');
+      const phR2 = cr2 != null ? cr2 : (p && p.r2 != null ? p.r2 : (cr != null ? cr : 'reps'));
+      const repsIn = side
+        ? `<input type="text" inputmode="numeric" placeholder="${phR}" value="${s.r ?? ''}" data-a="inr" data-x="${xi}" data-s="${si}" aria-label="Reps direita">
+           <input type="text" inputmode="numeric" placeholder="${phR2}" value="${s.r2 ?? ''}" data-a="inr2" data-x="${xi}" data-s="${si}" aria-label="Reps esquerda">`
+        : `<input type="text" inputmode="numeric" placeholder="${phR}" value="${s.r ?? ''}" data-a="inr" data-x="${xi}" data-s="${si}" aria-label="Repetições">`;
+      return `<div class="set-grid ${side?'side':''} ${s.done?'done':''} ${s.t==='w'?'warm':''}">
         <button class="sn" data-a="warm" data-x="${xi}" data-s="${si}" title="Alternar aquecimento">${s.t==='w'?'W':si+1}</button>
         <span class="prev num">${ghost}</span>
-        <input type="text" inputmode="decimal" placeholder="${p && p.w != null ? nbr(p.w, p.w%1?1:0) : 'kg'}"
+        <input type="text" inputmode="decimal" placeholder="${phW}"
                value="${s.w ?? ''}" data-a="inw" data-x="${xi}" data-s="${si}" aria-label="Peso">
-        <input type="text" inputmode="numeric" placeholder="${p && p.r != null ? p.r : 'reps'}"
-               value="${s.r ?? ''}" data-a="inr" data-x="${xi}" data-s="${si}" aria-label="Repetições">
+        ${repsIn}
         <button class="ck" data-a="ck" data-x="${xi}" data-s="${si}" aria-label="Concluir série">${s.done?'✓':''}</button>
       </div>`;
     }).join('');
@@ -237,17 +255,22 @@ function vWorkout(){
         </div>
         <button class="vidbtn" data-a="video" data-n="${esc(ex.name)}" aria-label="Ver demonstração no YouTube">▶</button>
       </div>
-      <div class="set-grid hd"><span></span><span>anterior</span><span style="text-align:center">kg</span><span style="text-align:center">reps</span><span></span></div>
+      <div class="set-grid hd ${side?'side':''}"><span></span><span>anterior</span><span style="text-align:center">kg</span>${side?'<span style="text-align:center">dir.</span><span style="text-align:center">esq.</span>':'<span style="text-align:center">reps</span>'}<span></span></div>
       ${rows}
       <button class="addset" data-a="addset" data-x="${xi}">+ adicionar série</button>
     </div>`;
   }).join('');
 
+  let liveVol = 0, liveDone = 0, liveTotal = 0;
+  for (const ex of a.exercises) for (const s of ex.sets){
+    liveTotal++;
+    if (s.done){ liveDone++; if (s.t !== 'w' && s.w != null && s.r != null) liveVol += s.w * (s.r + (s.r2 || 0)); }
+  }
   $('#view').innerHTML = `
     <div class="wo-head spread">
       <div>
         <div class="name">${esc(a.name)}</div>
-        <div class="small muted">começou ${a.start.slice(11)}</div>
+        <div class="small muted num">${liveDone}/${liveTotal} séries · <b style="color:var(--accent)">${volFmt(liveVol)}</b> acumulados</div>
       </div>
       <div class="clock num" id="wo-clock">0:00</div>
     </div>
@@ -269,9 +292,10 @@ function vWorkout(){
       if (!s.done){
         // fill from inputs / placeholders
         const grid = el.closest('.set-grid');
-        const wi = grid.querySelector('[data-a=inw]'), ri = grid.querySelector('[data-a=inr]');
+        const wi = grid.querySelector('[data-a=inw]'), ri = grid.querySelector('[data-a=inr]'), ri2 = grid.querySelector('[data-a=inr2]');
         s.w = numIn(wi.value !== '' ? wi.value : wi.placeholder);
         s.r = numIn(ri.value !== '' ? ri.value : ri.placeholder);
+        if (ri2) s.r2 = numIn(ri2.value !== '' ? ri2.value : ri2.placeholder);
         s.done = true;
         startRest(ex.rest, ex.name);
       } else { s.done = false; }
@@ -281,11 +305,13 @@ function vWorkout(){
     discard: () => { if (confirm('Descartar este treino? Nada será salvo.')) { db.active = null; save(); stopRest(); nav('home'); } },
   });
   // inputs persist on change
-  $$('#view input[data-a=inw], #view input[data-a=inr]').forEach(inp => {
+  $$('#view input[data-a=inw], #view input[data-a=inr], #view input[data-a=inr2]').forEach(inp => {
     inp.addEventListener('input', () => {
       const ex = a.exercises[inp.dataset.x], s = ex.sets[inp.dataset.s];
       const v = numIn(inp.value);
-      if (inp.dataset.a === 'inw') s.w = v; else s.r = v;
+      if (inp.dataset.a === 'inw') s.w = v;
+      else if (inp.dataset.a === 'inr2') s.r2 = v;
+      else s.r = v;
       save();
     });
   });
@@ -305,7 +331,7 @@ function finishWorkout(){
     id: uid(), name: a.name, start: a.start, end: nowLocal(),
     exercises: a.exercises.map(ex => ({
       name: ex.name,
-      sets: ex.sets.filter(s => s.done).map(({t,w,r}) => { const o = {t}; if (w!=null) o.w=w; if (r!=null) o.r=r; return o; }),
+      sets: ex.sets.filter(s => s.done).map(({t,w,r,r2}) => { const o = {t}; if (w!=null) o.w=w; if (r!=null) o.r=r; if (r2!=null) o.r2=r2; return o; }),
     })).filter(ex => ex.sets.length),
   };
   // PRs (compare against history BEFORE this workout)
@@ -421,7 +447,7 @@ function vDetail(){
         <div class="nm">${esc(ex.name)}</div>
         ${ex.sets.map((s,i) => `<div class="detail-set">
           <span style="width:22px;color:${s.t==='w'?'var(--steel)':'var(--faint)'}">${s.t==='w'?'W':i+1}</span>
-          ${s.w!=null||s.r!=null ? `<span><b>${s.w!=null?nbr(s.w,s.w%1?1:0):'—'}</b> kg × <b>${s.r??'—'}</b></span>` : ''}
+          ${s.w!=null||s.r!=null ? `<span><b>${s.w!=null?nbr(s.w,s.w%1?1:0):'—'}</b> kg × <b>${s.r??'—'}${s.r2!=null?`/${s.r2}`:''}</b>${s.r2!=null?' <span class=\"faint\">(D/E)</span>':''}</span>` : ''}
           ${s.d ? `<span><b>${Math.round(s.d/60)}</b> min${s.km?` · <b>${nbr(s.km,2)}</b> km`:''}</span>` : ''}
         </div>`).join('')}
       </div>`).join('')}
@@ -583,7 +609,7 @@ function progExHTML(){
     ${recent.length ? `<div class="h2">Últimas sessões</div><div class="card">` +
       recent.map(p => `<button class="linkrow" data-a="open" data-id="${p.id}">
         <span class="small num">${fmtDia(dt(p.date))}</span>
-        <span class="small num">${p.sets.filter(s=>s.t!=='w').map(s => s.w!=null?`${nbr(s.w,s.w%1?1:0)}×${s.r??'–'}`:'').filter(Boolean).join('  ')}</span>
+        <span class="small num">${p.sets.filter(s=>s.t!=='w').map(s => s.w!=null?`${nbr(s.w,s.w%1?1:0)}×${s.r??'–'}${s.r2!=null?`/${s.r2}`:''}`:'').filter(Boolean).join('  ')}</span>
       </button>`).join('') + `</div>` : `<div class="card muted small">Sem registros deste exercício ainda.</div>`}`;
 }
 function progVolHTML(){
