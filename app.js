@@ -44,6 +44,7 @@ function load(){
   }
   db.bodyweight = db.bodyweight || [];
   db.settings = db.settings || {restDefault:90};
+  db.exMuscles = db.exMuscles || {};
 }
 function save(){
   try { localStorage.setItem(KEY, JSON.stringify(db)); }
@@ -117,6 +118,248 @@ function nextRoutine(){
     if (i >= 0) return db.routines[(i+1) % db.routines.length];
   }
   return db.routines[0];
+}
+
+/* ================= MÚSCULOS ================= */
+const MUSCLES = [
+  ['peito','Peito'], ['ombro','Ombro'], ['trapezio','Trapézio'], ['dorsal','Dorsal'],
+  ['lombar','Lombar'], ['biceps','Bíceps'], ['triceps','Tríceps'], ['antebraco','Antebraço'],
+  ['abdomen','Abdômen'], ['obliquo','Oblíquos'], ['quadriceps','Quadríceps'],
+  ['posterior','Post. de coxa'], ['gluteo','Glúteo'], ['panturrilha','Panturrilha'],
+];
+const MLABEL = Object.fromEntries(MUSCLES);
+const mnorm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+
+/* dicionário exato (nomes do plano/histórico) com dica de sensação */
+const EXDB = {
+  'supino inclinado (halter)': {p:['peito','ombro'], s:['triceps'], tip:'Desça até sentir a parte de cima do peito alongar e suba apertando o peitoral. Se o ombro gritar, encoste mais as escápulas no banco.'},
+  'remada unilateral (halter)': {p:['dorsal'], s:['biceps','trapezio','antebraco'], tip:'Puxe com as costas, não com o braço: pense em levar o cotovelo ao bolso. Deve queimar na lateral das costas, não no bíceps primeiro.'},
+  'agachamento bulgaro': {p:['quadriceps','gluteo'], s:['posterior'], tip:'A perna da frente faz o trabalho: sinta a coxa e o glúteo dela. Tronco levemente inclinado à frente acende mais o glúteo.'},
+  'desenvolvimento sentado (halter)': {p:['ombro'], s:['triceps','trapezio'], tip:'Empurre para o teto sem arquear a lombar. A queimação certa é no ombro; se pinicar no pescoço, baixe o peso.'},
+  'roda abdominal': {p:['abdomen'], s:['obliquo','lombar'], tip:'Contraia o abdômen o tempo todo, como se fossem te dar um soco. A lombar não pode afundar; se doer embaixo das costas, encurte o movimento.'},
+  'supino reto / floor press (halter)': {p:['peito'], s:['triceps','ombro'], tip:'Sinta o peito esticar embaixo e contrair em cima. Cotovelos a uns 45° do tronco, não abertos em cruz.'},
+  'remada curvada (2 halteres)': {p:['dorsal','trapezio'], s:['biceps','lombar'], tip:'Costas retas, puxe os cotovelos para trás e junte as escápulas. Deve queimar no meio das costas.'},
+  'terra romeno (halter)': {p:['posterior','gluteo'], s:['lombar','antebraco'], tip:'Empurre o quadril para trás com joelhos quase esticados até a parte de trás da coxa alongar bem. Suba apertando o glúteo, sem puxar com a lombar.'},
+  'elevacao lateral (halter)': {p:['ombro'], s:['trapezio'], tip:'Suba até a altura dos ombros com cotovelos levemente dobrados. Queima na lateral do ombro; se você encolher os ombros, o peso está pesado demais.'},
+  'elevacao de quadril (escapulas no banco)': {p:['gluteo'], s:['posterior'], tip:'Suba o quadril apertando o bumbum no topo por 1 segundo. Queixo levemente para baixo; quem empurra é o calcanhar.'},
+  'supino declinado / crucifixo inclinado': {p:['peito'], s:['ombro','triceps'], tip:'No crucifixo, abra como um abraço invertido e sinta o peito alongar; não deixe virar supino dobrando demais o cotovelo.'},
+  'remada peito apoiado (banco inclinado)': {p:['dorsal','trapezio'], s:['biceps'], tip:'O banco tira a lombar do jogo: puxe os cotovelos para trás e esprema as escápulas. Sinta o meio das costas.'},
+  'afundo reverso': {p:['quadriceps','gluteo'], s:['posterior'], tip:'Dê o passo para trás e desça reto; a perna da frente empurra o chão para subir. Sinta coxa e glúteo da perna da frente.'},
+  'rosca inclinada (halter)': {p:['biceps'], s:['antebraco'], tip:'Braço caído para trás do corpo estica mais o bíceps: sinta alongar embaixo e aperte em cima, sem balançar o tronco.'},
+  'triceps testa (halter)': {p:['triceps'], s:[], tip:'Cotovelos apontados para o teto e parados; só o antebraço se move. Queima atrás do braço.'},
+  'face pull (elastico)': {p:['ombro','trapezio'], s:['dorsal'], tip:'Puxe em direção ao rosto abrindo as mãos, como quem mostra os músculos. Sinta atrás do ombro e entre as escápulas; ótimo para postura.'},
+};
+
+/* inferência por palavra-chave para nomes fora do dicionário (ordem importa) */
+const INFER = [
+  [/face ?pull/, {p:['ombro','trapezio'], s:['dorsal']}],
+  [/encolhimento|shrug/, {p:['trapezio'], s:['antebraco']}],
+  [/remada alta/, {p:['trapezio','ombro'], s:['biceps']}],
+  [/punho/, {p:['antebraco'], s:[]}],
+  [/rosca/, {p:['biceps'], s:['antebraco']}],
+  [/triceps|frances|testa|coice|kickback/, {p:['triceps'], s:[]}],
+  [/mergulho|paralela|\bdips?\b/, {p:['triceps','peito'], s:['ombro']}],
+  [/crucifixo|voador|\bfly\b|cross ?over|peck?[ -]?deck/, {p:['peito'], s:['ombro']}],
+  [/supino|flexao de brac|press de peito|push ?up/, {p:['peito'], s:['triceps','ombro']}],
+  [/desenvolvimento|militar|arnold/, {p:['ombro'], s:['triceps','trapezio']}],
+  [/elevacao lateral|elevacao frontal/, {p:['ombro'], s:[]}],
+  [/puxada|pull ?down|pull ?up|barra fixa|chin ?up/, {p:['dorsal'], s:['biceps']}],
+  [/pull ?over/, {p:['dorsal','peito'], s:['triceps']}],
+  [/remada|serrote/, {p:['dorsal'], s:['biceps','trapezio']}],
+  [/romeno|stiff/, {p:['posterior','gluteo'], s:['lombar']}],
+  [/levantamento terra|\bterra\b|deadlift/, {p:['posterior','gluteo'], s:['lombar','dorsal','antebraco']}],
+  [/bulgaro|afundo|avanco|passada|lunge/, {p:['quadriceps','gluteo'], s:['posterior']}],
+  [/agachamento|squat|leg ?press|\bhack\b/, {p:['quadriceps','gluteo'], s:['posterior']}],
+  [/extensora|extensao de perna/, {p:['quadriceps'], s:[]}],
+  [/flexora|nordic/, {p:['posterior'], s:[]}],
+  [/elevacao de quadril|hip ?thrust|ponte|elevacao pelvica/, {p:['gluteo'], s:['posterior']}],
+  [/gluteo|abducao/, {p:['gluteo'], s:[]}],
+  [/adutor|aducao/, {p:['quadriceps'], s:['gluteo']}],
+  [/panturrilha|\bcalf\b|gemeo/, {p:['panturrilha'], s:[]}],
+  [/prancha|plank/, {p:['abdomen'], s:['obliquo','lombar']}],
+  [/obliquo|russian|lenhador|rotacao de tronco/, {p:['obliquo'], s:['abdomen']}],
+  [/roda|abdominal|abdomen|crunch|\binfra\b|\bsupra\b|sit ?up|elevacao de perna|canivete/, {p:['abdomen'], s:['obliquo']}],
+  [/lombar|hiperextensao|good ?morning|superman/, {p:['lombar'], s:['gluteo','posterior']}],
+];
+
+/* dica genérica por músculo primário (fallback) */
+const MTIP = {
+  peito:'Empurre ou junte pensando em contrair o peito; os braços só transmitem a força.',
+  ombro:'Movimento controlado, sem impulso do corpo; a queimação certa fica na "bola" do ombro.',
+  trapezio:'Pense em juntar as escápulas, sem encolher o pescoço.',
+  dorsal:'Puxe com o cotovelo, não com a mão; sinta a lateral das costas trabalhar.',
+  lombar:'Movimento lento, coluna neutra, sem arredondar as costas; pare se houver dor aguda.',
+  biceps:'Cotovelo fixo ao lado do corpo; suba sem balançar o tronco.',
+  triceps:'Cotovelo parado; só o antebraço se move. Queima atrás do braço.',
+  antebraco:'Aperte firme a pegada; o antebraço trabalha segurando e movendo o punho.',
+  abdomen:'Contraia como se fosse levar um soco; solte o ar no esforço.',
+  obliquo:'Gire ou incline controlando; sinta a lateral da barriga.',
+  quadriceps:'Empurre o chão com o pé inteiro; sinta a frente da coxa.',
+  posterior:'Quadril para trás, coluna neutra; sinta alongar atrás da coxa.',
+  gluteo:'Aperte o bumbum no topo do movimento por 1 segundo.',
+  panturrilha:'Suba na ponta do pé o mais alto possível e desça devagar, alongando.',
+};
+
+function getMuscles(name){
+  const k = mnorm(name);
+  if (db.exMuscles && db.exMuscles[k]) return db.exMuscles[k];
+  if (EXDB[k]) return EXDB[k];
+  for (const [re, m] of INFER) if (re.test(k)) return m;
+  return null;
+}
+function muscleTip(name){
+  const m = getMuscles(name);
+  if (!m) return null;
+  return m.tip || ((m.p && m.p.length) ? MTIP[m.p[0]] : null);
+}
+/* agrega séries efetivas por músculo (secundário conta metade).
+   Aceita sets como array (treino) ou número (rotina). */
+function muscleAgg(exercises){
+  const agg = new Map();
+  for (const ex of exercises){
+    const m = getMuscles(ex.name); if (!m) continue;
+    let n;
+    if (Array.isArray(ex.sets)) n = ex.sets.filter(s => s.t !== 'w' && (s.done === undefined || s.done)).length;
+    else n = ex.sets || 0;
+    if (!n) continue;
+    for (const id of m.p || []) agg.set(id, (agg.get(id)||0) + n);
+    for (const id of m.s || []) agg.set(id, (agg.get(id)||0) + n*0.5);
+  }
+  return [...agg.entries()].sort((a,b) => b[1]-a[1]);
+}
+/* chips por exercício (sem contagem) — toque abre a ficha do exercício */
+function chipsFor(name){
+  const m = getMuscles(name);
+  if (!m) return `<button class="chip unk" data-a="musx" data-n="${esc(name)}">músculos?</button>`;
+  return [
+    ...(m.p||[]).map(id => `<button class="chip mus" data-a="musx" data-n="${esc(name)}">${MLABEL[id]}</button>`),
+    ...(m.s||[]).map(id => `<button class="chip mus2" data-a="musx" data-n="${esc(name)}">${MLABEL[id]}</button>`),
+  ].join('');
+}
+function chipsAgg(agg, act=''){
+  return agg.map(([id,v]) => `<button class="chip mus" ${act}>${MLABEL[id]} <b class="num">${nbr(v, v%1?1:0)}</b></button>`).join('');
+}
+
+/* ---------- mapa corporal (SVG, frente/costas) ---------- */
+function heat(v){
+  if (!v) return 'rgba(233,236,241,.05)';
+  return `rgba(255,180,84,${(0.16 + 0.84*Math.min(1,v)).toFixed(2)})`;
+}
+function bodyMapSVG(vals){
+  const f = id => `fill="${heat(vals[id]||0)}"`;
+  const st = 'stroke="rgba(38,46,58,.9)" stroke-width="1"';
+  const sil = 'fill="rgba(233,236,241,.03)" stroke="var(--line)" stroke-width="1"';
+  return `<svg class="bodymap" viewBox="0 0 300 224" role="img" aria-label="Mapa de músculos">
+  <!-- FRENTE -->
+  <circle cx="78" cy="22" r="12" ${sil}/>
+  <rect x="73" y="33" width="10" height="7" ${sil}/>
+  <polygon points="55,46 101,46 95,100 61,100" ${sil}/>
+  <polygon points="61,100 95,100 93,113 63,113" ${sil}/>
+  <rect x="64" y="158" width="11" height="38" rx="5" ${sil}/>
+  <rect x="81" y="158" width="11" height="38" rx="5" ${sil}/>
+  <polygon points="62,47 78,39 94,47 78,45" ${f('trapezio')} ${st}/>
+  <circle cx="55" cy="52" r="9" ${f('ombro')} ${st}/>
+  <circle cx="101" cy="52" r="9" ${f('ombro')} ${st}/>
+  <rect x="60" y="48" width="17" height="16" rx="5" ${f('peito')} ${st}/>
+  <rect x="79" y="48" width="17" height="16" rx="5" ${f('peito')} ${st}/>
+  <rect x="69" y="66" width="18" height="32" rx="4" ${f('abdomen')} ${st}/>
+  <rect x="60" y="66" width="7" height="30" rx="3" ${f('obliquo')} ${st}/>
+  <rect x="89" y="66" width="7" height="30" rx="3" ${f('obliquo')} ${st}/>
+  <rect x="44" y="62" width="11" height="25" rx="5" ${f('biceps')} ${st}/>
+  <rect x="101" y="62" width="11" height="25" rx="5" ${f('biceps')} ${st}/>
+  <rect x="42" y="89" width="10" height="26" rx="5" ${f('antebraco')} ${st}/>
+  <rect x="104" y="89" width="10" height="26" rx="5" ${f('antebraco')} ${st}/>
+  <rect x="62" y="113" width="14" height="44" rx="6" ${f('quadriceps')} ${st}/>
+  <rect x="80" y="113" width="14" height="44" rx="6" ${f('quadriceps')} ${st}/>
+  <text x="78" y="216" fill="var(--faint)" font-size="11" text-anchor="middle" font-weight="700">frente</text>
+  <!-- COSTAS -->
+  <circle cx="222" cy="22" r="12" ${sil}/>
+  <rect x="217" y="33" width="10" height="7" ${sil}/>
+  <polygon points="199,46 245,46 239,100 205,100" ${sil}/>
+  <polygon points="205,100 239,100 237,113 207,113" ${sil}/>
+  <polygon points="222,40 203,50 222,74 241,50" ${f('trapezio')} ${st}/>
+  <circle cx="199" cy="52" r="9" ${f('ombro')} ${st}/>
+  <circle cx="245" cy="52" r="9" ${f('ombro')} ${st}/>
+  <path d="M205,56 L219,62 L219,92 L208,83 Z" ${f('dorsal')} ${st}/>
+  <path d="M239,56 L225,62 L225,92 L236,83 Z" ${f('dorsal')} ${st}/>
+  <rect x="213" y="85" width="18" height="14" rx="3" ${f('lombar')} ${st}/>
+  <rect x="188" y="62" width="11" height="25" rx="5" ${f('triceps')} ${st}/>
+  <rect x="245" y="62" width="11" height="25" rx="5" ${f('triceps')} ${st}/>
+  <rect x="186" y="89" width="10" height="26" rx="5" ${f('antebraco')} ${st}/>
+  <rect x="248" y="89" width="10" height="26" rx="5" ${f('antebraco')} ${st}/>
+  <rect x="206" y="100" width="15" height="18" rx="7" ${f('gluteo')} ${st}/>
+  <rect x="223" y="100" width="15" height="18" rx="7" ${f('gluteo')} ${st}/>
+  <rect x="206" y="120" width="14" height="38" rx="6" ${f('posterior')} ${st}/>
+  <rect x="224" y="120" width="14" height="38" rx="6" ${f('posterior')} ${st}/>
+  <rect x="208" y="161" width="11" height="30" rx="5" ${f('panturrilha')} ${st}/>
+  <rect x="225" y="161" width="11" height="30" rx="5" ${f('panturrilha')} ${st}/>
+  <text x="222" y="216" fill="var(--faint)" font-size="11" text-anchor="middle" font-weight="700">costas</text>
+</svg>`;
+}
+function valsFromAgg(agg){
+  const max = agg.length ? Math.max(...agg.map(([,v]) => v)) : 1;
+  const vals = {};
+  for (const [id,v] of agg) vals[id] = v/max;
+  return vals;
+}
+
+/* ---------- sheets de músculo ---------- */
+function openMuscleSheetEx(name){
+  const m = getMuscles(name);
+  const vals = {};
+  if (m){ (m.p||[]).forEach(id => vals[id]=1); (m.s||[]).forEach(id => vals[id]=0.35); }
+  const tip = muscleTip(name);
+  openSheet(`
+    <div class="sheet-title">${esc(name)}</div>
+    ${m ? `<div class="muschips" style="margin-bottom:12px">
+        ${(m.p||[]).map(id=>`<span class="chip mus">${MLABEL[id]}</span>`).join('')}
+        ${(m.s||[]).map(id=>`<span class="chip mus2">${MLABEL[id]}</span>`).join('')}
+      </div>${bodyMapSVG(vals)}`
+      : '<div class="muted small" style="margin-bottom:10px">Ainda sem informação de músculos para este exercício.</div>'}
+    ${tip ? `<div class="tipbox">💡 ${esc(tip)}</div>` : ''}
+    <div class="row" style="margin-top:14px;gap:8px">
+      <button class="btn slim" data-a="editmus" style="flex:1">Editar músculos</button>
+      <button class="btn slim primary" data-a="close" style="flex:1">Fechar</button>
+    </div>`,
+    {close: closeSheet, editmus: () => openMuscleSelector(name)});
+}
+function openMuscleSheetSession(exercises, title){
+  const agg = muscleAgg(exercises);
+  if (!agg.length){ toast('Sem dados de músculos ainda'); return; }
+  openSheet(`
+    <div class="sheet-title">${esc(title)}</div>
+    ${bodyMapSVG(valsFromAgg(agg))}
+    <div class="muschips" style="margin-top:12px">${chipsAgg(agg)}</div>
+    <p class="faint small" style="margin-top:8px">Número = séries efetivas (músculo secundário conta metade).</p>
+    <button class="btn primary slim" data-a="close" style="margin-top:12px">Fechar</button>`,
+    {close: closeSheet});
+}
+function openMuscleSelector(name){
+  const k = mnorm(name);
+  const cur = getMuscles(name) || {p:[], s:[]};
+  const state = {};
+  (cur.p||[]).forEach(id => state[id]=1);
+  (cur.s||[]).forEach(id => state[id]=2);
+  const draw = () => openSheet(`
+    <div class="sheet-title">Músculos: ${esc(name)}</div>
+    <p class="muted small" style="margin-bottom:8px">Toque para alternar: primário → secundário → nenhum.</p>
+    ${MUSCLES.map(([id,lb]) => {
+      const stt = state[id]||0;
+      return `<button class="musrow ${stt===1?'p1':stt===2?'p2':''}" data-a="cyc" data-m="${id}">
+        <span>${lb}</span><span class="tag">${stt===1?'PRIMÁRIO':stt===2?'secundário':'—'}</span></button>`;
+    }).join('')}
+    <button class="btn primary" data-a="savemus" style="margin-top:14px">Salvar</button>`, {
+    cyc: el => { const id = el.dataset.m; state[id] = ((state[id]||0)+1)%3; draw(); },
+    savemus: () => {
+      const p = [], s = [];
+      for (const [id] of MUSCLES){ if (state[id]===1) p.push(id); else if (state[id]===2) s.push(id); }
+      db.exMuscles = db.exMuscles || {};
+      if (p.length || s.length) db.exMuscles[k] = {p, s};
+      else delete db.exMuscles[k];
+      save(); toast('Músculos salvos'); closeSheet(); render();
+    },
+  });
+  draw();
 }
 
 /* ================= router ================= */
@@ -249,9 +492,10 @@ function vWorkout(){
       <div class="spread">
         <div>
           <div class="ex-name">${esc(ex.name)}</div>
-          <div class="ex-meta num">${ex.tgt} · descanso ${fmtRest(ex.rest)}
+          <div class="ex-meta num" style="margin-bottom:5px">${ex.tgt} · descanso ${fmtRest(ex.rest)}
             ${ex.perSide ? ' <span class="chip side">por lado</span>' : ''}
             ${ex.superset ? ' <span class="chip ss">superset</span>' : ''}</div>
+          <div class="muschips" style="margin-bottom:8px">${chipsFor(ex.name)}</div>
         </div>
         <button class="vidbtn" data-a="video" data-n="${esc(ex.name)}" aria-label="Ver demonstração no YouTube">▶</button>
       </div>
@@ -285,6 +529,7 @@ function vWorkout(){
 
   bind('#view', {
     video: el => openVideo(el.dataset.n),
+    musx: el => openMuscleSheetEx(el.dataset.n),
     warm: el => { const s = a.exercises[el.dataset.x].sets[el.dataset.s]; s.t = s.t==='w'?'n':'w'; save(); render(); },
     addset: el => { const ex = a.exercises[el.dataset.x]; ex.sets.push({t:'n', w:null, r:null, done:false}); save(); render(); },
     ck: el => {
@@ -346,10 +591,15 @@ function finishWorkout(){
   db.active = null;
   save(); stopRest(); clearInterval(clockIv);
   const vol = woVolume(w), dur = woDur(w);
+  const magg = muscleAgg(w.exercises);
   openSheet(`
     <div class="sheet-title">Treino concluído 💪</div>
     <div class="summary-big">${volFmt(vol)}</div>
     <div class="muted small" style="margin-bottom:14px">volume total · ${woSets(w)} séries · ${minFmt(dur)}</div>
+    ${magg.length ? `<div class="h2" style="margin-top:4px">Músculos trabalhados</div>
+      ${bodyMapSVG(valsFromAgg(magg))}
+      <div class="muschips" style="margin-top:10px">${chipsAgg(magg)}</div>
+      <p class="faint small" style="margin:6px 0 8px">séries efetivas por músculo (secundário conta metade)</p>` : ''}
     ${prs.length ? `<div class="h2" style="margin-top:4px">Recordes</div>` +
       prs.map(p => `<div class="spread" style="padding:7px 0;border-bottom:1px solid var(--line)">
         <span>${esc(p.name)}</span>
@@ -442,9 +692,16 @@ function vDetail(){
       <div class="stat"><div class="v num">${woSets(w)}</div><div class="l">séries</div></div>
       <div class="stat"><div class="v num">${volFmt(woVolume(w))}</div><div class="l">volume</div></div>
     </div>
+    ${(() => { const magg = muscleAgg(w.exercises); return magg.length ? `
+    <div class="card">
+      <div class="h2" style="margin:0 0 10px">Músculos trabalhados</div>
+      ${bodyMapSVG(valsFromAgg(magg))}
+      <div class="muschips" style="margin-top:10px">${chipsAgg(magg)}</div>
+    </div>` : ''; })()}
     <div class="card">
       ${w.exercises.map(ex => `<div class="detail-ex">
         <div class="nm">${esc(ex.name)}</div>
+        <div class="muschips" style="margin:3px 0 7px">${chipsFor(ex.name)}</div>
         ${ex.sets.map((s,i) => `<div class="detail-set">
           <span style="width:22px;color:${s.t==='w'?'var(--steel)':'var(--faint)'}">${s.t==='w'?'W':i+1}</span>
           ${s.w!=null||s.r!=null ? `<span><b>${s.w!=null?nbr(s.w,s.w%1?1:0):'—'}</b> kg × <b>${s.r??'—'}${s.r2!=null?`/${s.r2}`:''}</b>${s.r2!=null?' <span class=\"faint\">(D/E)</span>':''}</span>` : ''}
@@ -456,6 +713,7 @@ function vDetail(){
   bind('#view', {
     back: () => route.from === 'month' ? nav('month', {k: route.fromK}) :
                 route.from ? nav(route.from) : nav('history'),
+    musx: el => openMuscleSheetEx(el.dataset.n),
     del: () => { if (confirm('Apagar este treino do histórico?')){ db.workouts = db.workouts.filter(x => x.id !== w.id); save(); toast('Treino apagado'); nav('history'); } },
   });
 }
@@ -487,6 +745,12 @@ function vMonth(){
       <div class="stat"><div class="v num">${ws.length?minFmt(mins/ws.length):'—'}</div><div class="l">média/treino</div></div>
       <div class="stat"><div class="v num">${prs.length}</div><div class="l">recordes</div></div>
     </div>
+    ${(() => { const magg = muscleAgg(ws.flatMap(w => w.exercises)); return magg.length ? `
+    <div class="h2">Músculos do mês</div>
+    <div class="card">
+      ${bodyMapSVG(valsFromAgg(magg))}
+      <div class="muschips" style="margin-top:10px">${chipsAgg(magg)}</div>
+    </div>` : ''; })()}
     ${prs.length ? `<div class="h2">Recordes do mês</div><div class="card">` +
       prs.map(p => `<div class="spread" style="padding:7px 0;border-bottom:1px solid var(--line)">
         <span style="flex:1">${esc(p.name)}</span>
@@ -601,6 +865,7 @@ function progExHTML(){
       </select>
       <button class="mini vid" data-a="video" data-n="${esc(progEx)}" aria-label="ver demonstração" style="width:42px;height:42px">▶</button>
     </div>
+    <div class="muschips" style="margin:-4px 0 10px">${chipsFor(progEx)}</div>
     <div class="seg">${metrics.map(([k,l]) => `<button class="${progMetric===k?'on':''}" data-a="metric" data-k="${k}">${l}</button>`).join('')}</div>
     <div class="chartbox">
       <div class="cap"><span>${hist.length} sessões · todo o histórico</span>${best!=null?`<span>melhor: <b class="num" style="color:var(--accent)">${progMetric==='vol'?volFmt(best):kg(Math.round(best*10)/10)}</b></span>`:''}</div>
@@ -660,6 +925,7 @@ function progPesoHTML(){
 function bindProgress(){
   bind('#view', {
     video: el => openVideo(el.dataset.n),
+    musx: el => openMuscleSheetEx(el.dataset.n),
     tab: el => { progTab = el.dataset.k; render(); },
     metric: el => { progMetric = el.dataset.k; render(); },
     open: el => nav('detail', {id: el.dataset.id, from:'progress'}),
@@ -692,11 +958,15 @@ function vPlan(){
         </div>
       </div>
       <div class="muted small" style="margin-top:10px;line-height:1.7">${r.exercises.map(e => `${esc(e.name)} <span class="faint num">${e.sets}×${e.repsMin}–${e.repsMax}</span>`).join('<br>')}</div>
+      ${(() => { const magg = muscleAgg(r.exercises); return magg.length ? `
+      <div class="muschips" style="margin-top:10px">${chipsAgg(magg, `data-a="musr" data-id="${r.id}"`)}</div>` : ''; })()}
     </div>`).join('')}
     <button class="btn slim" data-a="new">+ Nova rotina</button>`;
   bind('#view', {
     edit: el => nav('editRoutine', {id: el.dataset.id}),
     start: el => startWorkout(el.dataset.id),
+    musr: el => { const r = db.routines.find(x => x.id === el.dataset.id);
+                  if (r) openMuscleSheetSession(r.exercises, `Cobertura: ${r.name}`); },
     new: () => {
       const name = prompt('Nome da rotina:', `Treino ${String.fromCharCode(65 + db.routines.length)}`);
       if (!name) return;
@@ -723,6 +993,7 @@ function vEditRoutine(){
             <button class="mini" data-a="rm" data-i="${i}" aria-label="remover" style="color:var(--bad)">✕</button>
           </span>
         </div>
+        <div class="muschips" style="margin-top:6px">${chipsFor(e.name)}</div>
         <div class="pl-ctl">
           <label>séries<input type="number" value="${e.sets}" data-f="sets" data-i="${i}"></label>
           <label>reps mín<input type="number" value="${e.repsMin}" data-f="repsMin" data-i="${i}"></label>
@@ -753,6 +1024,7 @@ function vEditRoutine(){
   bind('#view', {
     back: () => nav('plan'),
     video: el => openVideo(el.dataset.n),
+    musx: el => openMuscleSheetEx(el.dataset.n),
     up: el => { const i = +el.dataset.i; if (i>0){ [r.exercises[i-1],r.exercises[i]] = [r.exercises[i],r.exercises[i-1]]; commit(); render(); } },
     dn: el => { const i = +el.dataset.i; if (i<r.exercises.length-1){ [r.exercises[i+1],r.exercises[i]] = [r.exercises[i],r.exercises[i+1]]; commit(); render(); } },
     rm: el => { r.exercises.splice(+el.dataset.i,1); commit(); render(); },
@@ -761,6 +1033,7 @@ function vEditRoutine(){
       if (!n) return;
       r.exercises.push({name:n, sets:3, repsMin:8, repsMax:12, rest: db.settings.restDefault});
       commit(); render();
+      if (!getMuscles(n)) openMuscleSelector(n); // exercício desconhecido: pedir músculos
     },
     delr: () => { if (confirm(`Apagar "${r.name}"? O histórico de treinos não é afetado.`)){
       db.routines = db.routines.filter(x => x.id !== r.id); save(); nav('plan'); } },
@@ -793,7 +1066,7 @@ function vSettings(){
     </div>
     <div class="h2">Zona de risco</div>
     <div class="card"><button class="btn danger slim" data-a="wipe">Apagar todos os dados</button></div>
-    <p class="faint small" style="text-align:center;margin-top:6px">PINEAPPLE METHOD v1 · ${db.workouts.length} treinos no aparelho</p>`;
+    <p class="faint small" style="text-align:center;margin-top:6px">PINEAPPLE METHOD v4 · ${db.workouts.length} treinos no aparelho</p>`;
   $('#s-rest').addEventListener('change', () => {
     const v = parseInt($('#s-rest').value,10);
     if (isFinite(v) && v >= 10){ db.settings.restDefault = v; save(); toast('Salvo'); }

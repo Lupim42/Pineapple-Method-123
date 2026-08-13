@@ -85,6 +85,18 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 .chip.side{background:rgba(127,178,229,.15);color:var(--steel)}
 .chip.ss{background:rgba(255,180,84,.14);color:var(--accent)}
 .chip.pr{background:var(--accent);color:var(--accent-ink)}
+.chip.mus{background:rgba(255,180,84,.15);color:var(--accent)}
+.chip.mus2{background:rgba(139,148,163,.13);color:var(--muted)}
+.chip.unk{background:rgba(127,178,229,.10);color:var(--steel);border:1px dashed rgba(127,178,229,.45)}
+.muschips{display:flex;flex-wrap:wrap;gap:5px}
+.muschips button.chip{cursor:pointer}
+.tipbox{background:rgba(255,180,84,.07);border:1px solid rgba(255,180,84,.22);border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.55;margin-top:12px}
+.bodymap{display:block;margin:0 auto;max-width:330px;width:100%}
+.musrow{display:flex;justify-content:space-between;align-items:center;width:100%;padding:11px 10px;border-bottom:1px solid var(--line);font-weight:600;text-align:left;border-radius:8px}
+.musrow:last-child{border-bottom:none}
+.musrow .tag{font-size:11px;color:var(--faint);font-weight:700;letter-spacing:.04em}
+.musrow.p1{background:rgba(255,180,84,.10)} .musrow.p1 .tag{color:var(--accent)}
+.musrow.p2{background:rgba(139,148,163,.09)} .musrow.p2 .tag{color:var(--muted)}
 .linkrow{display:flex;justify-content:space-between;align-items:center;padding:13px 2px;border-bottom:1px solid var(--line);width:100%;text-align:left}
 .linkrow:last-child{border-bottom:none}
 .arrow{color:var(--faint)}
