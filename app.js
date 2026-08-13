@@ -235,6 +235,7 @@ function vWorkout(){
             ${ex.perSide ? ' <span class="chip side">por lado</span>' : ''}
             ${ex.superset ? ' <span class="chip ss">superset</span>' : ''}</div>
         </div>
+        <button class="vidbtn" data-a="video" data-n="${esc(ex.name)}" aria-label="Ver demonstração no YouTube">▶</button>
       </div>
       <div class="set-grid hd"><span></span><span>anterior</span><span style="text-align:center">kg</span><span style="text-align:center">reps</span><span></span></div>
       ${rows}
@@ -260,6 +261,7 @@ function vWorkout(){
   tick(); clockIv = setInterval(tick, 1000);
 
   bind('#view', {
+    video: el => openVideo(el.dataset.n),
     warm: el => { const s = a.exercises[el.dataset.x].sets[el.dataset.s]; s.t = s.t==='w'?'n':'w'; save(); render(); },
     addset: el => { const ex = a.exercises[el.dataset.x]; ex.sets.push({t:'n', w:null, r:null, done:false}); save(); render(); },
     ck: el => {
@@ -289,6 +291,11 @@ function vWorkout(){
   });
 }
 const fmtRest = sec => sec >= 60 ? `${Math.floor(sec/60)}:${pad(sec%60)}` : `${sec}s`;
+function openVideo(name){
+  // remove parênteses do nome para a busca ficar mais natural
+  const q = 'como fazer ' + name.replace(/\(.*?\)/g, ' ').replace(/\//g, ' ').replace(/\s+/g,' ').trim() + ' exercício técnica';
+  window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(q), '_blank');
+}
 
 function finishWorkout(){
   const a = db.active;
@@ -562,9 +569,12 @@ function progExHTML(){
   const best = pts.length ? Math.max(...pts.map(p => p.y)) : null;
   const recent = hist.slice(-6).reverse();
   return `
-    <select data-a="ex" style="width:100%;margin-bottom:12px;font-weight:700">
-      ${names.map(n => `<option ${n===progEx?'selected':''}>${esc(n)}</option>`).join('')}
-    </select>
+    <div class="row" style="margin-bottom:12px">
+      <select data-a="ex" style="flex:1;font-weight:700">
+        ${names.map(n => `<option ${n===progEx?'selected':''}>${esc(n)}</option>`).join('')}
+      </select>
+      <button class="mini vid" data-a="video" data-n="${esc(progEx)}" aria-label="ver demonstração" style="width:42px;height:42px">▶</button>
+    </div>
     <div class="seg">${metrics.map(([k,l]) => `<button class="${progMetric===k?'on':''}" data-a="metric" data-k="${k}">${l}</button>`).join('')}</div>
     <div class="chartbox">
       <div class="cap"><span>${hist.length} sessões · todo o histórico</span>${best!=null?`<span>melhor: <b class="num" style="color:var(--accent)">${progMetric==='vol'?volFmt(best):kg(Math.round(best*10)/10)}</b></span>`:''}</div>
@@ -623,6 +633,7 @@ function progPesoHTML(){
 }
 function bindProgress(){
   bind('#view', {
+    video: el => openVideo(el.dataset.n),
     tab: el => { progTab = el.dataset.k; render(); },
     metric: el => { progMetric = el.dataset.k; render(); },
     open: el => nav('detail', {id: el.dataset.id, from:'progress'}),
@@ -680,6 +691,7 @@ function vEditRoutine(){
         <div class="spread">
           <span class="nm">${esc(e.name)} ${e.perSide?'<span class="chip side">por lado</span>':''} ${e.superset?'<span class="chip ss">superset</span>':''}</span>
           <span class="row" style="gap:5px">
+            <button class="mini vid" data-a="video" data-n="${esc(e.name)}" aria-label="ver demonstração">▶</button>
             <button class="mini" data-a="up" data-i="${i}" aria-label="subir">↑</button>
             <button class="mini" data-a="dn" data-i="${i}" aria-label="descer">↓</button>
             <button class="mini" data-a="rm" data-i="${i}" aria-label="remover" style="color:var(--bad)">✕</button>
@@ -714,6 +726,7 @@ function vEditRoutine(){
   }));
   bind('#view', {
     back: () => nav('plan'),
+    video: el => openVideo(el.dataset.n),
     up: el => { const i = +el.dataset.i; if (i>0){ [r.exercises[i-1],r.exercises[i]] = [r.exercises[i],r.exercises[i-1]]; commit(); render(); } },
     dn: el => { const i = +el.dataset.i; if (i<r.exercises.length-1){ [r.exercises[i+1],r.exercises[i]] = [r.exercises[i],r.exercises[i+1]]; commit(); render(); } },
     rm: el => { r.exercises.splice(+el.dataset.i,1); commit(); render(); },
