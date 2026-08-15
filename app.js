@@ -61,6 +61,15 @@ function normalize(){
   return !had; // true se migrou agora
 }
 const actRoutines = () => db.routines.filter(r => r.pid === db.settings.activeProg);
+// código curto para os botões rápidos da home: "A · Empurrar (peito)" -> "A"; "Treino B" -> "B"
+function shortLabel(n){
+  let s = String(n || '').trim();
+  const i = s.indexOf('·');
+  if (i > 0) s = s.slice(0, i).trim();
+  s = s.replace(/^Treino\s+/i, '').trim();
+  if (s.length > 8) s = s.slice(0, 7).trimEnd() + '…';
+  return s || '?';
+}
 function save(){
   try { localStorage.setItem(KEY, JSON.stringify(db)); }
   catch(e){ toast('Erro ao salvar: armazenamento cheio?'); }
@@ -732,7 +741,7 @@ function vHome(){
       <div class="stat"><div class="v num">${db.workouts.length}</div><div class="l">no total</div></div>
     </div>
     <div class="row" style="gap:8px;margin-bottom:4px">
-      ${actRoutines().map(r => `<button class="btn slim" data-a="start" data-id="${r.id}" style="flex:1">${esc(r.name.replace('Treino ',''))}</button>`).join('')}
+      ${actRoutines().map(r => `<button class="btn slim" data-a="start" data-id="${r.id}" style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(shortLabel(r.name))}</button>`).join('')}
     </div>
     <div class="h2">Calendário</div>
     <div class="card cal">${calHTML(calCur)}</div>
@@ -1595,7 +1604,7 @@ function vSettings(){
     </div>
     <div class="h2">Zona de risco</div>
     <div class="card"><button class="btn danger slim" data-a="wipe">Apagar todos os dados</button></div>
-    <p class="faint small" style="text-align:center;margin-top:6px">PINEAPPLE METHOD v9 · ${db.workouts.length} treinos no aparelho</p>`;
+    <p class="faint small" style="text-align:center;margin-top:6px">PINEAPPLE METHOD v10 · ${db.workouts.length} treinos no aparelho</p>`;
   $('#s-rest').addEventListener('change', () => {
     const v = parseInt($('#s-rest').value,10);
     if (isFinite(v) && v >= 10){ db.settings.restDefault = v; save(); toast('Salvo'); }
