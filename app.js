@@ -1508,6 +1508,7 @@ function vEditRoutine(){
       </div>
       <datalist id="exlist">${known.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
     </div>
+    <button class="btn slim" data-a="movr" style="margin-bottom:8px">⇢ Mover para outro planejamento</button>
     <button class="btn danger slim" data-a="delr">Apagar rotina</button>`;
   const commit = () => { save(); };
   $('#r-name').addEventListener('input', () => { r.name = $('#r-name').value; commit(); });
@@ -1532,8 +1533,35 @@ function vEditRoutine(){
       commit(); render();
       if (!getMuscles(n)) openMuscleSelector(n); // exercício desconhecido: pedir músculos
     },
+    movr: () => openMoveSheet(r),
     delr: () => { if (confirm(`Apagar "${r.name}"? O histórico de treinos não é afetado.`)){
       db.routines = db.routines.filter(x => x.id !== r.id); save(); nav('plan'); } },
+  });
+}
+/* ---------- mover rotina entre planejamentos ---------- */
+function openMoveSheet(r){
+  const cur = db.programs.find(p => p.id === r.pid);
+  openSheet(`
+    <div class="sheet-title">Mover "${esc(r.name)}"</div>
+    <p class="muted small" style="margin-bottom:10px">Está em: <b style="color:var(--text)">${esc(cur ? cur.name : '?')}</b></p>
+    ${db.programs.filter(p => p.id !== r.pid).map(p => `
+      <button class="btn slim" data-a="mvto" data-id="${p.id}" style="margin-bottom:8px">${esc(p.name)}${p.id === db.settings.activeProg ? ' <span class="chip ss">ativo</span>' : ''}</button>`).join('')}
+    <button class="btn slim" data-a="mvnew" style="margin-bottom:8px">+ Novo planejamento…</button>
+    <button class="btn slim" data-a="close">Cancelar</button>
+    <p class="faint small" style="margin-top:10px">Só muda a caixa da rotina; exercícios e histórico ficam como estão.</p>`, {
+    close: closeSheet,
+    mvto: el => {
+      const p = db.programs.find(x => x.id === el.dataset.id); if (!p) return;
+      r.pid = p.id; planOpen[p.id] = true; save(); closeSheet(); nav('plan');
+      toast(`Movida para "${p.name}"`);
+    },
+    mvnew: () => {
+      const name = prompt('Nome do novo planejamento:', `Planejamento ${db.programs.length + 1}`);
+      if (!name) return;
+      const p = {id: uid(), name: name.trim().slice(0, 48)};
+      db.programs.push(p); r.pid = p.id; planOpen[p.id] = true; save(); closeSheet(); nav('plan');
+      toast(`Movida para "${p.name}"`);
+    },
   });
 }
 
@@ -1567,7 +1595,7 @@ function vSettings(){
     </div>
     <div class="h2">Zona de risco</div>
     <div class="card"><button class="btn danger slim" data-a="wipe">Apagar todos os dados</button></div>
-    <p class="faint small" style="text-align:center;margin-top:6px">PINEAPPLE METHOD v8 · ${db.workouts.length} treinos no aparelho</p>`;
+    <p class="faint small" style="text-align:center;margin-top:6px">PINEAPPLE METHOD v9 · ${db.workouts.length} treinos no aparelho</p>`;
   $('#s-rest').addEventListener('change', () => {
     const v = parseInt($('#s-rest').value,10);
     if (isFinite(v) && v >= 10){ db.settings.restDefault = v; save(); toast('Salvo'); }
