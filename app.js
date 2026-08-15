@@ -42,10 +42,25 @@ function load(){
     db = JSON.parse(JSON.stringify(window.SEED));
     save();
   }
+  if (normalize()) save(); // persiste migrações na hora
+}
+function normalize(){
+  const had = Array.isArray(db.programs) && db.programs.length > 0;
   db.bodyweight = db.bodyweight || [];
   db.settings = db.settings || {restDefault:90};
   db.exMuscles = db.exMuscles || {};
+  // v8: planejamentos (caixas de rotinas). Migração não destrutiva.
+  if (!Array.isArray(db.programs) || !db.programs.length){
+    const pid = uid();
+    db.programs = [{id: pid, name: 'Planejamento 1'}];
+    for (const r of db.routines) r.pid = pid;
+    db.settings.activeProg = pid;
+  }
+  if (!db.programs.some(p => p.id === db.settings.activeProg)) db.settings.activeProg = db.programs[0].id;
+  for (const r of db.routines) if (!db.programs.some(p => p.id === r.pid)) r.pid = db.settings.activeProg;
+  return !had; // true se migrou agora
 }
+const actRoutines = () => db.routines.filter(r => r.pid === db.settings.activeProg);
 function save(){
   try { localStorage.setItem(KEY, JSON.stringify(db)); }
   catch(e){ toast('Erro ao salvar: armazenamento cheio?'); }
@@ -112,12 +127,14 @@ function weekCount(){
   return db.workouts.filter(w => dt(w.start) >= d).length;
 }
 function nextRoutine(){
-  const names = db.routines.map(r => r.name);
+  const rs = actRoutines(); // só o planejamento ativo
+  if (!rs.length) return null;
+  const names = rs.map(r => r.name);
   for (const w of woSorted()){
     const i = names.indexOf(w.name);
-    if (i >= 0) return db.routines[(i+1) % db.routines.length];
+    if (i >= 0) return rs[(i+1) % rs.length];
   }
-  return db.routines[0];
+  return rs[0];
 }
 
 /* ================= MÚSCULOS ================= */
@@ -715,7 +732,7 @@ function vHome(){
       <div class="stat"><div class="v num">${db.workouts.length}</div><div class="l">no total</div></div>
     </div>
     <div class="row" style="gap:8px;margin-bottom:4px">
-      ${db.routines.map(r => `<button class="btn slim" data-a="start" data-id="${r.id}" style="flex:1">${esc(r.name.replace('Treino ',''))}</button>`).join('')}
+      ${actRoutines().map(r => `<button class="btn slim" data-a="start" data-id="${r.id}" style="flex:1">${esc(r.name.replace('Treino ',''))}</button>`).join('')}
     </div>
     <div class="h2">Calendário</div>
     <div class="card cal">${calHTML(calCur)}</div>
@@ -1297,10 +1314,11 @@ function bindProgress(){
 }
 
 /* ================= PLAN ================= */
+let planOpen = {}; // planejamentos inativos expandidos (estado só da sessão de tela)
 function vPlan(){
-  $('#view').innerHTML = `
-    <div class="h1">Plano de treino</div>
-    ${db.routines.map(r => `<div class="card">
+  const act = db.settings.activeProg;
+  const progs = [db.programs.find(p => p.id === act), ...db.programs.filter(p => p.id !== act)].filter(Boolean);
+  const rCard = r => `<div class="card">
       <div class="spread">
         <div>
           <div style="font-weight:800;font-size:16px">${esc(r.name)}</div>
@@ -1314,8 +1332,33 @@ function vPlan(){
       <div class="muted small" style="margin-top:10px;line-height:1.7">${r.exercises.map(e => `${esc(e.name)} <span class="faint num">${e.sets}×${e.repsMin}–${e.repsMax}</span>`).join('<br>')}</div>
       ${(() => { const magg = muscleAgg(r.exercises); return magg.length ? `
       <div class="muschips" style="margin-top:10px">${chipsAgg(magg, `data-a="musr" data-id="${r.id}"`)}</div>` : ''; })()}
-    </div>`).join('')}
-    <button class="btn slim" data-a="new">+ Nova rotina</button>
+    </div>`;
+  const block = p => {
+    const rs = db.routines.filter(r => r.pid === p.id);
+    const isAct = p.id === act;
+    const open = isAct || !!planOpen[p.id];
+    return `<div class="card" style="${isAct ? 'border-color:var(--accent)' : ''}">
+      <div class="spread">
+        <div>
+          <div style="font-weight:800;font-size:16px">${esc(p.name)}${isAct ? ' <span class="chip ss">ativo</span>' : ''}</div>
+          <div class="muted small">${rs.length} rotina(s) · ${rs.reduce((a,r)=>a+r.exercises.length,0)} exercícios</div>
+        </div>
+        <div class="row">
+          ${isAct ? '' : `<button class="btn slim primary" data-a="usep" data-id="${p.id}" style="width:auto;padding:8px 14px">Usar este</button>
+          <button class="btn slim" data-a="togp" data-id="${p.id}" style="width:auto;padding:8px 14px">${open ? 'Fechar' : 'Ver'}</button>`}
+        </div>
+      </div>
+      <div class="row" style="gap:16px;margin-top:8px">
+        <button class="small" style="color:var(--steel);font-weight:700" data-a="renp" data-id="${p.id}">Renomear</button>
+        ${!isAct && db.programs.length > 1 ? `<button class="small" style="color:var(--bad);font-weight:700" data-a="delp" data-id="${p.id}">Excluir</button>` : ''}
+      </div>
+    </div>
+    ${open ? rs.map(rCard).join('') + `<button class="btn slim" data-a="new" data-pid="${p.id}" style="margin-bottom:12px">+ Nova rotina${isAct ? '' : ` em ${esc(p.name)}`}</button>` : ''}`;
+  };
+  $('#view').innerHTML = `
+    <div class="h1">Plano de treino</div>
+    ${progs.map(block).join('')}
+    <button class="btn slim" data-a="newp">+ Novo planejamento</button>
     <button class="btn slim" data-a="impplan" style="margin-top:8px">⤓ Importar plano (arquivo)</button>
     <p class="faint small" style="margin-top:8px;line-height:1.5;text-align:center">Arquivo .json no formato Pineapple — peça ao Claude a ficha pronta e importe aqui.</p>
     <input type="file" id="f-plan" accept=".json,application/json" hidden>`;
@@ -1325,10 +1368,33 @@ function vPlan(){
     impplan: () => $('#f-plan').click(),
     musr: el => { const r = db.routines.find(x => x.id === el.dataset.id);
                   if (r) openMuscleSheetSession(r.exercises, `Cobertura: ${r.name}`); },
-    new: () => {
-      const name = prompt('Nome da rotina:', `Treino ${String.fromCharCode(65 + db.routines.length)}`);
+    usep: el => { db.settings.activeProg = el.dataset.id; delete planOpen[el.dataset.id]; save(); render();
+                  const p = db.programs.find(x => x.id === el.dataset.id); toast(`"${p ? p.name : ''}" agora é o planejamento ativo`); },
+    togp: el => { planOpen[el.dataset.id] = !planOpen[el.dataset.id]; render(); },
+    renp: el => { const p = db.programs.find(x => x.id === el.dataset.id); if (!p) return;
+                  const name = prompt('Nome do planejamento:', p.name);
+                  if (!name) return;
+                  p.name = name.trim().slice(0, 48); save(); render(); },
+    delp: el => { const p = db.programs.find(x => x.id === el.dataset.id); if (!p) return;
+      const rs = db.routines.filter(r => r.pid === p.id);
+      if (confirm(`Excluir "${p.name}"${rs.length ? ` e suas ${rs.length} rotina(s)` : ''}? O histórico de treinos não é afetado.`)){
+        db.routines = db.routines.filter(r => r.pid !== p.id);
+        db.programs = db.programs.filter(x => x.id !== p.id);
+        delete planOpen[p.id];
+        normalize(); save(); render(); toast('Planejamento excluído');
+      } },
+    newp: () => {
+      const name = prompt('Nome do novo planejamento:', `Planejamento ${db.programs.length + 1}`);
       if (!name) return;
-      const r = {id: uid(), name, exercises: []};
+      const p = {id: uid(), name: name.trim().slice(0, 48)};
+      db.programs.push(p); planOpen[p.id] = true; save(); render();
+    },
+    new: el => {
+      const pid = el.dataset.pid || db.settings.activeProg;
+      const count = db.routines.filter(r => r.pid === pid).length;
+      const name = prompt('Nome da rotina:', `Treino ${String.fromCharCode(65 + count)}`);
+      if (!name) return;
+      const r = {id: uid(), name, exercises: [], pid};
       db.routines.push(r); save(); nav('editRoutine', {id: r.id});
     },
   });
@@ -1378,14 +1444,29 @@ function importPlanFile(file){
         <b>${esc(r.name)}</b><br>
         <span class="muted" style="line-height:1.7">${r.exercises.map(e => `${esc(e.name)} <span class="faint num">${e.sets}×${e.repsMin}–${e.repsMax}</span>${e.perSide?' <span class="chip side">por lado</span>':''}${e.superset?' <span class="chip ss">superset</span>':''}`).join('<br>')}</span>
       </div>`).join('')}
-      <button class="btn primary" data-a="addp" style="margin-top:14px">Adicionar às rotinas atuais</button>
-      <button class="btn slim" data-a="repp" style="margin-top:8px">Substituir todo o plano</button>
+      <button class="btn primary" data-a="newpp" style="margin-top:14px">Criar novo planejamento</button>
+      <button class="btn slim" data-a="addp" style="margin-top:8px">Adicionar ao planejamento ativo</button>
+      <button class="btn slim" data-a="repp" style="margin-top:8px">Substituir planejamento ativo</button>
       <button class="btn slim" data-a="close" style="margin-top:8px">Cancelar</button>
       <p class="faint small" style="margin-top:10px">O histórico de treinos nunca é afetado pela importação.</p>`, {
       close: closeSheet,
-      addp: () => { applyMus(); db.routines.push(...clean); save(); closeSheet(); render(); toast(`${clean.length} rotina(s) adicionada(s)`); },
-      repp: () => { if (confirm('Substituir TODAS as rotinas atuais pelas do arquivo? O histórico não é afetado.')){
-        applyMus(); db.routines = clean; save(); closeSheet(); render(); toast('Plano substituído'); } },
+      newpp: () => {
+        const sug = String(d.name || d.nome || `Planejamento ${db.programs.length + 1}`).slice(0, 48);
+        const name = prompt('Nome do novo planejamento:', sug);
+        if (!name) return; // continua na folha; nada foi gravado
+        const p = {id: uid(), name: name.trim().slice(0, 48)};
+        db.programs.push(p);
+        for (const r of clean) r.pid = p.id;
+        db.settings.activeProg = p.id;
+        applyMus(); db.routines.push(...clean); save(); closeSheet(); render();
+        toast(`"${p.name}" criado e ativado`);
+      },
+      addp: () => { for (const r of clean) r.pid = db.settings.activeProg;
+        applyMus(); db.routines.push(...clean); save(); closeSheet(); render(); toast(`${clean.length} rotina(s) adicionada(s)`); },
+      repp: () => { if (confirm('Substituir as rotinas do planejamento ATIVO pelas do arquivo? Os outros planejamentos e o histórico não são afetados.')){
+        for (const r of clean) r.pid = db.settings.activeProg;
+        applyMus(); db.routines = db.routines.filter(r => r.pid !== db.settings.activeProg).concat(clean);
+        save(); closeSheet(); render(); toast('Planejamento substituído'); } },
     });
   }).catch(() => toast('Arquivo de plano inválido'));
 }
@@ -1486,7 +1567,7 @@ function vSettings(){
     </div>
     <div class="h2">Zona de risco</div>
     <div class="card"><button class="btn danger slim" data-a="wipe">Apagar todos os dados</button></div>
-    <p class="faint small" style="text-align:center;margin-top:6px">PINEAPPLE METHOD v7 · ${db.workouts.length} treinos no aparelho</p>`;
+    <p class="faint small" style="text-align:center;margin-top:6px">PINEAPPLE METHOD v8 · ${db.workouts.length} treinos no aparelho</p>`;
   $('#s-rest').addEventListener('change', () => {
     const v = parseInt($('#s-rest').value,10);
     if (isFinite(v) && v >= 10){ db.settings.restDefault = v; save(); toast('Salvo'); }
@@ -1526,7 +1607,7 @@ function importJSON(file){
     const d = JSON.parse(t);
     if (!d.routines || !d.workouts) throw new Error('formato');
     if (!confirm(`Substituir tudo pelo backup (${d.workouts.length} treinos)?`)) return;
-    db = d; save(); toast('Backup restaurado'); nav('home');
+    db = d; normalize(); save(); toast('Backup restaurado'); nav('home');
   }).catch(() => toast('Arquivo inválido'));
 }
 /* --- Hevy CSV --- */
