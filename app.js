@@ -157,10 +157,12 @@ const INFER = [
   [/remada alta/, {p:['trapezio','ombro'], s:['biceps']}],
   [/punho/, {p:['antebraco'], s:[]}],
   [/rosca/, {p:['biceps'], s:['antebraco']}],
+  [/coice de gluteo/, {p:['gluteo'], s:[]}],
   [/triceps|frances|testa|coice|kickback/, {p:['triceps'], s:[]}],
   [/mergulho|paralela|\bdips?\b/, {p:['triceps','peito'], s:['ombro']}],
+  [/crucifixo inverso|voador inverso|reverse fly/, {p:['ombro'], s:['trapezio']}],
   [/crucifixo|voador|\bfly\b|cross ?over|peck?[ -]?deck/, {p:['peito'], s:['ombro']}],
-  [/supino|flexao de brac|press de peito|push ?up/, {p:['peito'], s:['triceps','ombro']}],
+  [/supino|flexao de brac|press de peito|floor press|push ?up/, {p:['peito'], s:['triceps','ombro']}],
   [/desenvolvimento|militar|arnold/, {p:['ombro'], s:['triceps','trapezio']}],
   [/elevacao lateral|elevacao frontal/, {p:['ombro'], s:[]}],
   [/puxada|pull ?down|pull ?up|barra fixa|chin ?up/, {p:['dorsal'], s:['biceps']}],
@@ -168,14 +170,15 @@ const INFER = [
   [/remada|serrote/, {p:['dorsal'], s:['biceps','trapezio']}],
   [/romeno|stiff/, {p:['posterior','gluteo'], s:['lombar']}],
   [/levantamento terra|\bterra\b|deadlift/, {p:['posterior','gluteo'], s:['lombar','dorsal','antebraco']}],
-  [/bulgaro|afundo|avanco|passada|lunge/, {p:['quadriceps','gluteo'], s:['posterior']}],
+  [/bulgaro|afundo|avanco|passada|lunge|step[ -]?up|subida no banco/, {p:['quadriceps','gluteo'], s:['posterior']}],
   [/agachamento|squat|leg ?press|\bhack\b/, {p:['quadriceps','gluteo'], s:['posterior']}],
   [/extensora|extensao de perna/, {p:['quadriceps'], s:[]}],
-  [/flexora|nordic/, {p:['posterior'], s:[]}],
+  [/flexora|nordic|flexao de perna|flexao de joelho/, {p:['posterior'], s:[]}],
   [/elevacao de quadril|hip ?thrust|ponte|elevacao pelvica/, {p:['gluteo'], s:['posterior']}],
-  [/gluteo|abducao/, {p:['gluteo'], s:[]}],
+  [/gluteo|abduc|abdutor/, {p:['gluteo'], s:[]}],
   [/adutor|aducao/, {p:['quadriceps'], s:['gluteo']}],
   [/panturrilha|\bcalf\b|gemeo/, {p:['panturrilha'], s:[]}],
+  [/prancha lateral/, {p:['obliquo'], s:['abdomen']}],
   [/prancha|plank/, {p:['abdomen'], s:['obliquo','lombar']}],
   [/obliquo|russian|lenhador|rotacao de tronco/, {p:['obliquo'], s:['abdomen']}],
   [/roda|abdominal|abdomen|crunch|\binfra\b|\bsupra\b|sit ?up|elevacao de perna|canivete/, {p:['abdomen'], s:['obliquo']}],
@@ -239,17 +242,19 @@ function chipsFor(name){
 function chipsAgg(agg, act=''){
   return agg.map(([id,v]) => `<button class="chip mus" ${act}>${MLABEL[id]} <b class="num">${nbr(v, v%1?1:0)}</b></button>`).join('');
 }
+const MUSCAP = `<p class="faint small" style="margin-top:7px;line-height:1.45">número = séries que trabalharam o músculo (secundário vale meia série)</p>`;
 
 /* ---------- mapa corporal (SVG, frente/costas) ---------- */
 function heat(v){
   if (!v) return 'rgba(233,236,241,.05)';
   return `rgba(255,180,84,${(0.16 + 0.84*Math.min(1,v)).toFixed(2)})`;
 }
-function bodyMapSVG(vals){
+function bodyMapSVG(vals, px){
   const f = id => `fill="${heat(vals[id]||0)}"`;
   const st = 'stroke="rgba(38,46,58,.9)" stroke-width="1"';
-  const sil = 'fill="rgba(233,236,241,.03)" stroke="var(--line)" stroke-width="1"';
-  return `<svg class="bodymap" viewBox="0 0 300 224" role="img" aria-label="Mapa de músculos">
+  const sil = 'fill="rgba(233,236,241,.03)" stroke="#262E3A" stroke-width="1"';
+  const dim = px ? `width="${px}" height="${Math.round(px*224/300)}"` : 'class="bodymap"';
+  return `<svg xmlns="http://www.w3.org/2000/svg" ${dim} viewBox="0 0 300 224" role="img" aria-label="Mapa de músculos">
   <!-- FRENTE -->
   <circle cx="78" cy="22" r="12" ${sil}/>
   <rect x="73" y="33" width="10" height="7" ${sil}/>
@@ -271,7 +276,7 @@ function bodyMapSVG(vals){
   <rect x="104" y="89" width="10" height="26" rx="5" ${f('antebraco')} ${st}/>
   <rect x="62" y="113" width="14" height="44" rx="6" ${f('quadriceps')} ${st}/>
   <rect x="80" y="113" width="14" height="44" rx="6" ${f('quadriceps')} ${st}/>
-  <text x="78" y="216" fill="var(--faint)" font-size="11" text-anchor="middle" font-weight="700">frente</text>
+  <text x="78" y="216" fill="#5A6272" font-size="11" text-anchor="middle" font-weight="700">frente</text>
   <!-- COSTAS -->
   <circle cx="222" cy="22" r="12" ${sil}/>
   <rect x="217" y="33" width="10" height="7" ${sil}/>
@@ -293,7 +298,7 @@ function bodyMapSVG(vals){
   <rect x="224" y="120" width="14" height="38" rx="6" ${f('posterior')} ${st}/>
   <rect x="208" y="161" width="11" height="30" rx="5" ${f('panturrilha')} ${st}/>
   <rect x="225" y="161" width="11" height="30" rx="5" ${f('panturrilha')} ${st}/>
-  <text x="222" y="216" fill="var(--faint)" font-size="11" text-anchor="middle" font-weight="700">costas</text>
+  <text x="222" y="216" fill="#5A6272" font-size="11" text-anchor="middle" font-weight="700">costas</text>
 </svg>`;
 }
 function valsFromAgg(agg){
@@ -360,6 +365,317 @@ function openMuscleSelector(name){
     },
   });
   draw();
+}
+
+/* ---------- substituição guiada de exercício ---------- */
+const EQ = [['halter','Halter'],['banco','Banco'],['elastico','Elástico'],['corpo','Peso do corpo'],['barra','Barra'],['maquina','Máquina'],['polia','Polia']];
+/* eq = equipamento NECESSÁRIO; ps = unilateral (por lado) */
+const ALTDB = [
+  // peito
+  {n:'Supino Reto (Halter)', eq:['halter','banco']},
+  {n:'Supino Inclinado (Halter)', eq:['halter','banco']},
+  {n:'Floor Press (Halter)', eq:['halter']},
+  {n:'Crucifixo Reto (Halter)', eq:['halter','banco']},
+  {n:'Crucifixo Inclinado (Halter)', eq:['halter','banco']},
+  {n:'Flexão de Braços', eq:['corpo']},
+  {n:'Flexão de Braços Inclinada (mãos no banco)', eq:['corpo','banco']},
+  {n:'Flexão de Braços Declinada (pés no banco)', eq:['corpo','banco']},
+  {n:'Pullover (Halter)', eq:['halter','banco']},
+  {n:'Supino Reto (Barra)', eq:['barra','banco']},
+  {n:'Supino Máquina', eq:['maquina']},
+  {n:'Crossover (Polia)', eq:['polia']},
+  {n:'Peck Deck', eq:['maquina']},
+  // costas
+  {n:'Remada Unilateral (Halter)', eq:['halter','banco'], ps:1},
+  {n:'Remada Curvada (2 Halteres)', eq:['halter']},
+  {n:'Remada Peito Apoiado (Banco Inclinado)', eq:['halter','banco']},
+  {n:'Remada com Elástico', eq:['elastico']},
+  {n:'Puxada Frontal (Polia)', eq:['polia']},
+  {n:'Remada Baixa (Polia)', eq:['polia']},
+  {n:'Remada Máquina', eq:['maquina']},
+  {n:'Remada Curvada (Barra)', eq:['barra']},
+  {n:'Barra Fixa', eq:['corpo']},
+  // trapézio / ombro posterior
+  {n:'Face Pull (Elástico)', eq:['elastico']},
+  {n:'Face Pull (Polia)', eq:['polia']},
+  {n:'Encolhimento (Halter)', eq:['halter']},
+  {n:'Crucifixo Inverso (Halter)', eq:['halter','banco']},
+  {n:'Crucifixo Inverso Máquina', eq:['maquina']},
+  {n:'Remada Alta (Halter)', eq:['halter']},
+  // ombro
+  {n:'Desenvolvimento Sentado (Halter)', eq:['halter','banco']},
+  {n:'Desenvolvimento em Pé (Halter)', eq:['halter']},
+  {n:'Elevação Lateral (Halter)', eq:['halter']},
+  {n:'Elevação Lateral (Elástico)', eq:['elastico']},
+  {n:'Elevação Lateral (Polia)', eq:['polia']},
+  {n:'Elevação Frontal (Halter)', eq:['halter']},
+  {n:'Desenvolvimento Militar (Barra)', eq:['barra']},
+  {n:'Desenvolvimento Máquina', eq:['maquina']},
+  // bíceps
+  {n:'Rosca Direta (Halter)', eq:['halter']},
+  {n:'Rosca Alternada (Halter)', eq:['halter']},
+  {n:'Rosca Martelo (Halter)', eq:['halter']},
+  {n:'Rosca Inclinada (Halter)', eq:['halter','banco']},
+  {n:'Rosca Concentrada (Halter)', eq:['halter','banco'], ps:1},
+  {n:'Rosca com Elástico', eq:['elastico']},
+  {n:'Rosca Direta (Barra)', eq:['barra']},
+  {n:'Rosca Direta (Polia)', eq:['polia']},
+  {n:'Rosca Scott Máquina', eq:['maquina']},
+  // tríceps
+  {n:'Tríceps Testa (Halter)', eq:['halter','banco']},
+  {n:'Tríceps Francês (Halter)', eq:['halter']},
+  {n:'Tríceps Coice (Halter)', eq:['halter','banco'], ps:1},
+  {n:'Mergulho no Banco', eq:['corpo','banco']},
+  {n:'Tríceps com Elástico', eq:['elastico']},
+  {n:'Tríceps Corda (Polia)', eq:['polia']},
+  {n:'Paralelas', eq:['corpo']},
+  // quadríceps / pernas
+  {n:'Agachamento Búlgaro', eq:['halter','banco'], ps:1},
+  {n:'Afundo Reverso', eq:['halter'], ps:1},
+  {n:'Avanço (Passada)', eq:['halter'], ps:1},
+  {n:'Agachamento Taça (Goblet)', eq:['halter']},
+  {n:'Agachamento Sumô (Halter)', eq:['halter']},
+  {n:'Step-up no Banco', eq:['halter','banco'], ps:1},
+  {n:'Agachamento com Salto', eq:['corpo']},
+  {n:'Agachamento Livre (Barra)', eq:['barra']},
+  {n:'Leg Press', eq:['maquina']},
+  {n:'Cadeira Extensora', eq:['maquina']},
+  {n:'Hack Machine', eq:['maquina']},
+  // posterior de coxa
+  {n:'Terra Romeno (Halter)', eq:['halter']},
+  {n:'Terra Romeno Unilateral (Halter)', eq:['halter'], ps:1},
+  {n:'Stiff (Halter)', eq:['halter']},
+  {n:'Good Morning (Halter)', eq:['halter']},
+  {n:'Flexão de Perna com Elástico', eq:['elastico']},
+  {n:'Nordic Curl', eq:['corpo']},
+  {n:'Levantamento Terra (Barra)', eq:['barra']},
+  {n:'Mesa Flexora', eq:['maquina']},
+  {n:'Cadeira Flexora', eq:['maquina']},
+  // glúteo
+  {n:'Elevação de Quadril (escápulas no banco)', eq:['halter','banco']},
+  {n:'Ponte de Glúteo no Chão', eq:['corpo']},
+  {n:'Ponte de Glúteo com Halter', eq:['halter']},
+  {n:'Coice de Glúteo (Elástico)', eq:['elastico'], ps:1},
+  {n:'Coice de Glúteo (Polia)', eq:['polia'], ps:1},
+  {n:'Abdução com Elástico', eq:['elastico']},
+  {n:'Cadeira Abdutora', eq:['maquina']},
+  {n:'Hip Thrust (Barra)', eq:['barra','banco']},
+  // panturrilha
+  {n:'Panturrilha em Pé (Halter)', eq:['halter']},
+  {n:'Panturrilha Unilateral no Degrau', eq:['corpo'], ps:1},
+  {n:'Panturrilha Sentado (Halteres)', eq:['halter','banco']},
+  {n:'Panturrilha na Máquina', eq:['maquina']},
+  // abdômen / lombar
+  {n:'Roda Abdominal', eq:['corpo']},
+  {n:'Prancha', eq:['corpo']},
+  {n:'Prancha Lateral', eq:['corpo']},
+  {n:'Abdominal Supra', eq:['corpo']},
+  {n:'Elevação de Pernas', eq:['corpo']},
+  {n:'Abdominal Bicicleta', eq:['corpo']},
+  {n:'Russian Twist (Halter)', eq:['halter']},
+  {n:'Abdominal Infra no Banco', eq:['corpo','banco']},
+  {n:'Abdominal Máquina', eq:['maquina']},
+  {n:'Superman (Lombar)', eq:['corpo']},
+];
+function altList(name){
+  const m = getMuscles(name);
+  if (!m || !m.p || !m.p.length) return [];
+  const tgt = new Set(m.p);
+  const tgtS = new Set(m.s || []);
+  const sel = new Set(db.settings.equip || ['halter','banco','elastico','corpo']);
+  const out = [];
+  for (const a of ALTDB){
+    if (mnorm(a.n) === mnorm(name)) continue;
+    if (!a.eq.every(e => sel.has(e))) continue;
+    const am = getMuscles(a.n);
+    if (!am || !am.p || !am.p.length) continue;
+    const hit = am.p.filter(p => tgt.has(p)).length;
+    if (!hit) continue;
+    // desempate: secundários em comum aproximam o padrão de movimento
+    const sHit = (am.s || []).filter(s => tgtS.has(s) || tgt.has(s)).length
+               + am.p.filter(p => tgtS.has(p)).length;
+    out.push({a, am, hit, sHit, extra: am.p.length - hit});
+  }
+  out.sort((x,y) => y.hit - x.hit || y.sHit - x.sHit || x.extra - y.extra || x.a.n.localeCompare(y.a.n, 'pt'));
+  return out;
+}
+function openSubSheet(name, ctx){
+  if (!db.settings.equip) { db.settings.equip = ['halter','banco','elastico','corpo']; save(); }
+  const draw = () => {
+    const sel = new Set(db.settings.equip);
+    const alts = altList(name);
+    const m = getMuscles(name);
+    openSheet(`
+      <div class="sheet-title">Substituir: ${esc(name)}</div>
+      ${m ? `<div class="muschips" style="margin-bottom:12px">
+        ${(m.p||[]).map(id=>`<span class="chip mus">${MLABEL[id]}</span>`).join('')}
+        ${(m.s||[]).map(id=>`<span class="chip mus2">${MLABEL[id]}</span>`).join('')}</div>` : ''}
+      <p class="muted small" style="margin-bottom:6px">Tenho disponível:</p>
+      <div class="muschips" style="margin-bottom:12px">
+        ${EQ.map(([id,lb]) => `<button class="chip ${sel.has(id)?'mus':'mus2'}" data-a="eq" data-e="${id}">${sel.has(id)?'✓ ':''}${lb}</button>`).join('')}
+      </div>
+      ${alts.length ? alts.map((o,i) => `<button class="musrow" data-a="pick" data-i="${i}">
+          <span style="flex:1">${esc(o.a.n)}${o.a.ps?' <span class="chip side">por lado</span>':''}<br>
+            <span style="display:inline-block;margin-top:4px">${o.am.p.map(id=>`<span class="chip mus">${MLABEL[id]}</span>`).join(' ')}
+            ${(o.am.s||[]).map(id=>`<span class="chip mus2">${MLABEL[id]}</span>`).join(' ')}</span></span>
+          <span class="tag" style="color:var(--steel);white-space:nowrap">usar ›</span>
+        </button>`).join('')
+        : '<div class="muted small" style="padding:12px 0">Nenhuma alternativa com esse equipamento. Marque mais opções acima.</div>'}
+      <button class="btn slim" data-a="close" style="margin-top:14px">Cancelar</button>`, {
+      close: closeSheet,
+      eq: el => { const id = el.dataset.e, s2 = new Set(db.settings.equip);
+                  s2.has(id) ? s2.delete(id) : s2.add(id);
+                  db.settings.equip = [...s2]; save(); draw(); },
+      pick: el => applySub(alts[+el.dataset.i].a, ctx),
+    });
+  };
+  draw();
+}
+function applySub(alt, ctx){
+  if (ctx.type === 'plan'){
+    const r = db.routines.find(x => x.id === ctx.id); if (!r) return;
+    const e = r.exercises[ctx.i]; if (!e) return;
+    e.name = alt.n; e.perSide = !!alt.ps;
+    save(); closeSheet(); render(); toast('Substituído no plano');
+  } else {
+    const ex = db.active && db.active.exercises[ctx.i]; if (!ex) return;
+    if (ex.sets.some(s => s.done)){ toast('Desfaça as séries concluídas (✓) antes de substituir'); return; }
+    ex.name = alt.n; ex.perSide = !!alt.ps; ex.prev = lastPerf(alt.n);
+    save(); closeSheet(); render(); toast('Substituído só neste treino');
+  }
+}
+
+/* ---------- exportar treino como imagem (PNG compartilhável) ---------- */
+function rr(x, y, w, h, r, ctx){ // rounded rect path
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r); ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r); ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+}
+function svgToImage(svg){
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = rej;
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  });
+}
+const FONT = '-apple-system, "Segoe UI", Roboto, sans-serif';
+async function renderWorkoutPNG(w){
+  const W = 1080, P = 66;
+  const agg = mMuscleSortTop(muscleAgg(w.exercises));
+  const d = dt(w.start);
+  const meas = document.createElement('canvas').getContext('2d');
+
+  // chips: quebra de linha por medição
+  meas.font = `700 30px ${FONT}`;
+  const chipItems = agg.map(([id,v]) => `${MLABEL[id]}  ${nbr(v, v%1?1:0)}`);
+  const chipLines = [];
+  { let cur = [], cw = 0;
+    for (const t of chipItems){
+      const bw = meas.measureText(t).width + 48;
+      if (cw + bw + 18 > W - 2*P && cur.length){ chipLines.push(cur); cur = []; cw = 0; }
+      cur.push({t, w: bw}); cw += bw + 18;
+    }
+    if (cur.length) chipLines.push(cur);
+  }
+  // altura exata (mesma aritmética do desenho abaixo)
+  let exH = 0;
+  for (const ex of w.exercises) exH += 52 + ex.sets.length*46 + 30;
+  const mapW = 620, mapH = Math.round(mapW*224/300);
+  const musH = agg.length ? 20 + mapH + 40 + chipLines.length*64 + 26 : 0;
+  const H = (P+8) + 74 + 46 + 64 + 96 + musH + 30 + exH + 84;
+
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const x = cv.getContext('2d');
+  x.fillStyle = '#0C0E12'; x.fillRect(0, 0, W, H);
+  let y = P + 8;
+
+  // wordmark
+  x.font = `900 34px ${FONT}`;
+  x.fillStyle = '#E9ECF1'; x.fillText('PINEAPPLE', P, y);
+  x.fillStyle = '#FFB454'; x.fillText('METHOD', P + x.measureText('PINEAPPLE ').width, y);
+  y += 74;
+  // título e data
+  x.font = `900 62px ${FONT}`; x.fillStyle = '#E9ECF1'; x.fillText(w.name, P, y); y += 46;
+  x.font = `400 31px ${FONT}`; x.fillStyle = '#8B94A3';
+  x.fillText(`${fmtDataLonga(d)} · ${d.toTimeString().slice(0,5)}`, P, y); y += 64;
+  // stats
+  const stats = [[minFmt(woDur(w)),'duração'], [String(woSets(w)),'séries'], [volFmt(woVolume(w)),'volume']];
+  const colW = (W - 2*P) / 3;
+  stats.forEach(([v,l], i) => {
+    const cx = P + i*colW;
+    x.fillStyle = '#151920'; rr(cx, y-52, colW-18, 108, 16, x); x.fill();
+    x.strokeStyle = '#262E3A'; x.lineWidth = 2; x.stroke();
+    x.font = `800 44px ${FONT}`; x.fillStyle = i===2 ? '#FFB454' : '#E9ECF1';
+    x.fillText(v, cx+26, y+4);
+    x.font = `400 26px ${FONT}`; x.fillStyle = '#8B94A3'; x.fillText(l, cx+26, y+42);
+  });
+  y += 96;
+
+  if (agg.length){
+    x.font = `700 27px ${FONT}`; x.fillStyle = '#8B94A3';
+    x.fillText('M Ú S C U L O S   T R A B A L H A D O S', P, y); y += 20;
+    try {
+      const img = await svgToImage(bodyMapSVG(valsFromAgg(agg), mapW*2)); // 2x p/ nitidez
+      x.drawImage(img, (W-mapW)/2, y, mapW, mapH);
+    } catch(e){}
+    y += mapH + 40;
+    for (const line of chipLines){
+      let cx = P;
+      for (const c of line){
+        x.fillStyle = 'rgba(255,180,84,.16)'; rr(cx, y-36, c.w, 52, 26, x); x.fill();
+        x.font = `700 30px ${FONT}`; x.fillStyle = '#FFB454'; x.fillText(c.t, cx+24, y);
+        cx += c.w + 18;
+      }
+      y += 64;
+    }
+    y += 26;
+  }
+
+  // separador
+  x.strokeStyle = '#262E3A'; x.lineWidth = 2;
+  x.beginPath(); x.moveTo(P, y-14); x.lineTo(W-P, y-14); x.stroke();
+  y += 30;
+
+  for (const ex of w.exercises){
+    x.font = `800 36px ${FONT}`; x.fillStyle = '#E9ECF1'; x.fillText(ex.name, P, y); y += 52;
+    ex.sets.forEach((s, i) => {
+      x.font = `700 29px ${FONT}`; x.fillStyle = s.t==='w' ? '#7FB2E5' : '#5A6272';
+      x.fillText(s.t==='w' ? 'W' : String(i+1), P+8, y);
+      let txt = '';
+      if (s.w != null || s.r != null){
+        txt = `${s.w!=null?nbr(s.w, s.w%1?1:0):'—'} kg × ${s.r ?? '—'}${s.r2!=null?`/${s.r2} (D/E)`:''}`;
+      } else if (s.d){
+        txt = `${Math.round(s.d/60)} min${s.km?` · ${nbr(s.km,2)} km`:''}`;
+      }
+      x.font = `600 31px ${FONT}`; x.fillStyle = '#C7CDD8'; x.fillText(txt, P+70, y);
+      y += 46;
+    });
+    y += 30;
+  }
+  // rodapé
+  x.font = `400 26px ${FONT}`; x.fillStyle = '#5A6272'; x.textAlign = 'center';
+  x.fillText('PINEAPPLE METHOD · diário de treino', W/2, H-40);
+  x.textAlign = 'left';
+  return new Promise(res => cv.toBlob(res, 'image/png'));
+}
+const mMuscleSortTop = agg => agg; // já vem ordenado por volume
+async function shareWorkoutImage(w){
+  try {
+    toast('Gerando imagem…');
+    const blob = await renderWorkoutPNG(w);
+    if (!blob){ toast('Erro ao gerar imagem'); return; }
+    const file = new File([blob], `pineapple-${ymd(dt(w.start))}.png`, {type:'image/png'});
+    if (navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title: w.name});
+    } else {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = file.name; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    }
+  } catch(e){ if (!e || e.name !== 'AbortError') toast('Não deu para compartilhar'); }
 }
 
 /* ================= router ================= */
@@ -451,7 +767,7 @@ function startWorkout(routineId){
       sets: Array.from({length: e.sets}, () => ({t:'n', w:null, r:null, done:false})),
     })),
   };
-  save(); nav('workout');
+  save(); acquireWake(); nav('workout');
 }
 let clockIv = null;
 function vWorkout(){
@@ -497,11 +813,18 @@ function vWorkout(){
             ${ex.superset ? ' <span class="chip ss">superset</span>' : ''}</div>
           <div class="muschips" style="margin-bottom:8px">${chipsFor(ex.name)}</div>
         </div>
-        <button class="vidbtn" data-a="video" data-n="${esc(ex.name)}" aria-label="Ver demonstração no YouTube">▶</button>
+        <div class="row" style="gap:6px;flex-shrink:0">
+          <button class="mini" data-a="sub" data-x="${xi}" aria-label="Substituir exercício" style="width:38px;height:38px;font-size:16px">⇄</button>
+          <button class="vidbtn" data-a="video" data-n="${esc(ex.name)}" aria-label="Ver demonstração no YouTube">▶</button>
+        </div>
       </div>
       <div class="set-grid hd ${side?'side':''}"><span></span><span>anterior</span><span style="text-align:center">kg</span>${side?'<span style="text-align:center">dir.</span><span style="text-align:center">esq.</span>':'<span style="text-align:center">reps</span>'}<span></span></div>
       ${rows}
-      <button class="addset" data-a="addset" data-x="${xi}">+ adicionar série</button>
+      <div class="row" style="gap:14px">
+        <button class="addset" data-a="addset" data-x="${xi}">+ adicionar série</button>
+        ${ex.sets.length > 1 && !ex.sets[ex.sets.length-1].done
+          ? `<button class="addset" data-a="rmset" data-x="${xi}" style="color:var(--bad)">– remover última</button>` : ''}
+      </div>
     </div>`;
   }).join('');
 
@@ -530,8 +853,11 @@ function vWorkout(){
   bind('#view', {
     video: el => openVideo(el.dataset.n),
     musx: el => openMuscleSheetEx(el.dataset.n),
+    sub: el => openSubSheet(a.exercises[el.dataset.x].name, {type:'workout', i:+el.dataset.x}),
     warm: el => { const s = a.exercises[el.dataset.x].sets[el.dataset.s]; s.t = s.t==='w'?'n':'w'; save(); render(); },
     addset: el => { const ex = a.exercises[el.dataset.x]; ex.sets.push({t:'n', w:null, r:null, done:false}); save(); render(); },
+    rmset: el => { const ex = a.exercises[el.dataset.x], last = ex.sets[ex.sets.length-1];
+                   if (ex.sets.length > 1 && !last.done){ ex.sets.pop(); save(); render(); } },
     ck: el => {
       const ex = a.exercises[el.dataset.x], si = +el.dataset.s, s = ex.sets[si];
       if (!s.done){
@@ -547,7 +873,7 @@ function vWorkout(){
       save(); render();
     },
     finish: () => finishWorkout(),
-    discard: () => { if (confirm('Descartar este treino? Nada será salvo.')) { db.active = null; save(); stopRest(); nav('home'); } },
+    discard: () => { if (confirm('Descartar este treino? Nada será salvo.')) { db.active = null; save(); stopRest(); releaseWake(); nav('home'); } },
   });
   // inputs persist on change
   $$('#view input[data-a=inw], #view input[data-a=inr], #view input[data-a=inr2]').forEach(inp => {
@@ -589,7 +915,7 @@ function finishWorkout(){
   }
   db.workouts.push(w);
   db.active = null;
-  save(); stopRest(); clearInterval(clockIv);
+  save(); stopRest(); clearInterval(clockIv); releaseWake();
   const vol = woVolume(w), dur = woDur(w);
   const magg = muscleAgg(w.exercises);
   openSheet(`
@@ -599,7 +925,7 @@ function finishWorkout(){
     ${magg.length ? `<div class="h2" style="margin-top:4px">Músculos trabalhados</div>
       ${bodyMapSVG(valsFromAgg(magg))}
       <div class="muschips" style="margin-top:10px">${chipsAgg(magg)}</div>
-      <p class="faint small" style="margin:6px 0 8px">séries efetivas por músculo (secundário conta metade)</p>` : ''}
+      <p class="faint small" style="margin:6px 0 8px">número = séries que trabalharam o músculo (secundário vale meia série)</p>` : ''}
     ${prs.length ? `<div class="h2" style="margin-top:4px">Recordes</div>` +
       prs.map(p => `<div class="spread" style="padding:7px 0;border-bottom:1px solid var(--line)">
         <span>${esc(p.name)}</span>
@@ -612,22 +938,46 @@ function finishWorkout(){
 /* ================= REST TIMER ================= */
 const rest = {ends:0, total:0, iv:null};
 let audioCtx = null;
-document.addEventListener('touchstart', initAudio, {once:true});
-document.addEventListener('click', initAudio, {once:true});
-function initAudio(){ try { audioCtx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){} }
+/* iOS: sessão de áudio 'playback' toca mesmo com a chavinha no silencioso (iOS 17+) */
+try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch(e){}
+function initAudio(){
+  try { audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)(); } catch(e){ return; }
+  try {
+    if (audioCtx.state !== 'running') audioCtx.resume();
+    // buffer mudo dentro do gesto do usuário: destrava a saída de som no iOS
+    const src = audioCtx.createBufferSource();
+    src.buffer = audioCtx.createBuffer(1, 1, 22050);
+    src.connect(audioCtx.destination); src.start(0);
+  } catch(e){}
+}
+/* re-destrava a cada toque: o contexto fica "quente" para o beep disparar sozinho depois */
+document.addEventListener('touchend', () => { if (!audioCtx || audioCtx.state !== 'running') initAudio(); }, {passive:true});
+document.addEventListener('click',    () => { if (!audioCtx || audioCtx.state !== 'running') initAudio(); });
 function beep(){
+  if (!audioCtx) initAudio();
   if (!audioCtx) return;
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  [0,.25,.5].forEach((d,i) => {
+  try {
+    if (audioCtx.state !== 'running') audioCtx.resume();
     const o = audioCtx.createOscillator(), g = audioCtx.createGain();
     o.connect(g); g.connect(audioCtx.destination);
-    o.frequency.value = i===2 ? 1175 : 880; o.type = 'sine';
-    const t = audioCtx.currentTime + d;
-    g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(.35,t+.02); g.gain.exponentialRampToValueAtTime(.0001,t+.18);
-    o.start(t); o.stop(t+.2);
-  });
-  if (navigator.vibrate) navigator.vibrate([180,80,180]);
+    o.type = 'sine'; o.frequency.value = 1000;
+    const t = audioCtx.currentTime;
+    g.gain.setValueAtTime(.0001, t);
+    g.gain.exponentialRampToValueAtTime(.6, t+.015);
+    g.gain.exponentialRampToValueAtTime(.0001, t+.22);
+    o.start(t); o.stop(t+.25);
+  } catch(e){}
+  if (navigator.vibrate) navigator.vibrate(200); // Android; iOS não expõe vibração para web apps
 }
+
+/* ---------- wake lock: tela não apaga com treino ativo (senão o timer congela) ---------- */
+let wakeLock = null;
+async function acquireWake(){
+  if (!('wakeLock' in navigator) || !db.active) return;
+  try { wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+}
+function releaseWake(){ try { if (wakeLock) wakeLock.release(); } catch(e){} wakeLock = null; }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && db.active) acquireWake(); });
 function startRest(sec, label){
   rest.ends = Date.now() + sec*1000; rest.total = sec*1000; rest.fired = false;
   $('#rest-lbl').textContent = 'Descanso · ' + label.slice(0,28);
@@ -697,6 +1047,7 @@ function vDetail(){
       <div class="h2" style="margin:0 0 10px">Músculos trabalhados</div>
       ${bodyMapSVG(valsFromAgg(magg))}
       <div class="muschips" style="margin-top:10px">${chipsAgg(magg)}</div>
+      ${MUSCAP}
     </div>` : ''; })()}
     <div class="card">
       ${w.exercises.map(ex => `<div class="detail-ex">
@@ -709,11 +1060,13 @@ function vDetail(){
         </div>`).join('')}
       </div>`).join('')}
     </div>
+    <button class="btn slim" data-a="share" style="margin-bottom:10px">📤 Compartilhar treino (imagem)</button>
     <button class="btn danger slim" data-a="del">Apagar este treino</button>`;
   bind('#view', {
     back: () => route.from === 'month' ? nav('month', {k: route.fromK}) :
                 route.from ? nav(route.from) : nav('history'),
     musx: el => openMuscleSheetEx(el.dataset.n),
+    share: () => shareWorkoutImage(w),
     del: () => { if (confirm('Apagar este treino do histórico?')){ db.workouts = db.workouts.filter(x => x.id !== w.id); save(); toast('Treino apagado'); nav('history'); } },
   });
 }
@@ -750,6 +1103,7 @@ function vMonth(){
     <div class="card">
       ${bodyMapSVG(valsFromAgg(magg))}
       <div class="muschips" style="margin-top:10px">${chipsAgg(magg)}</div>
+      ${MUSCAP}
     </div>` : ''; })()}
     ${prs.length ? `<div class="h2">Recordes do mês</div><div class="card">` +
       prs.map(p => `<div class="spread" style="padding:7px 0;border-bottom:1px solid var(--line)">
@@ -961,10 +1315,14 @@ function vPlan(){
       ${(() => { const magg = muscleAgg(r.exercises); return magg.length ? `
       <div class="muschips" style="margin-top:10px">${chipsAgg(magg, `data-a="musr" data-id="${r.id}"`)}</div>` : ''; })()}
     </div>`).join('')}
-    <button class="btn slim" data-a="new">+ Nova rotina</button>`;
+    <button class="btn slim" data-a="new">+ Nova rotina</button>
+    <button class="btn slim" data-a="impplan" style="margin-top:8px">⤓ Importar plano (arquivo)</button>
+    <p class="faint small" style="margin-top:8px;line-height:1.5;text-align:center">Arquivo .json no formato Pineapple — peça ao Claude a ficha pronta e importe aqui.</p>
+    <input type="file" id="f-plan" accept=".json,application/json" hidden>`;
   bind('#view', {
     edit: el => nav('editRoutine', {id: el.dataset.id}),
     start: el => startWorkout(el.dataset.id),
+    impplan: () => $('#f-plan').click(),
     musr: el => { const r = db.routines.find(x => x.id === el.dataset.id);
                   if (r) openMuscleSheetSession(r.exercises, `Cobertura: ${r.name}`); },
     new: () => {
@@ -974,6 +1332,62 @@ function vPlan(){
       db.routines.push(r); save(); nav('editRoutine', {id: r.id});
     },
   });
+  const fp = $('#f-plan');
+  if (fp) fp.addEventListener('change', ev => { importPlanFile(ev.target.files[0]); ev.target.value = ''; });
+}
+/* ---------- importar plano (arquivo JSON no formato Pineapple) ---------- */
+const clampInt = (v, lo, hi, dflt) => { const n = parseInt(v, 10); return isFinite(n) ? Math.min(hi, Math.max(lo, n)) : dflt; };
+function importPlanFile(file){
+  if (!file) return;
+  file.text().then(t => {
+    const d = JSON.parse(t);
+    const rs = d.routines || d.rotinas;
+    if (!Array.isArray(rs) || !rs.length) throw new Error('formato');
+    const musMap = {}; // aplicado só na confirmação
+    const clean = rs.map(r => ({
+      id: uid(),
+      name: String(r.name || r.nome || 'Treino').slice(0, 48),
+      exercises: (r.exercises || r.exercicios || []).map(e => {
+        const name = String(e.name || e.nome || '').trim().slice(0, 64);
+        if (name && e.muscles && (e.muscles.p || e.muscles.s)){
+          const valid = ids => (Array.isArray(ids) ? ids : []).filter(x => MLABEL[x]);
+          const p = valid(e.muscles.p), s = valid(e.muscles.s);
+          if (p.length || s.length) musMap[mnorm(name)] = {p, s};
+        }
+        const o = {
+          name,
+          sets: clampInt(e.sets ?? e.series, 1, 12, 3),
+          repsMin: clampInt(e.repsMin ?? e.repMin, 1, 100, 8),
+          repsMax: clampInt(e.repsMax ?? e.repMax, 1, 100, 12),
+          rest: clampInt(e.rest ?? e.descanso, 10, 600, db.settings.restDefault ?? 90),
+        };
+        if (e.perSide || e.porLado) o.perSide = true;
+        const ss = clampInt(e.superset, 0, 9, 0);
+        if (ss) o.superset = ss;
+        return o;
+      }).filter(e => e.name),
+    })).filter(r => r.exercises.length);
+    if (!clean.length) throw new Error('vazio');
+    const nEx = clean.reduce((a,r) => a + r.exercises.length, 0);
+    const nMus = Object.keys(musMap).length;
+    const applyMus = () => { for (const [k,v] of Object.entries(musMap)) db.exMuscles[k] = v; };
+    openSheet(`
+      <div class="sheet-title">Importar plano</div>
+      <p class="muted small" style="margin-bottom:10px"><b style="color:var(--text)">${clean.length}</b> rotina(s) · <b style="color:var(--text)">${nEx}</b> exercícios${nMus ? ` · ${nMus} com músculos definidos no arquivo` : ''}</p>
+      ${clean.map(r => `<div class="small" style="padding:8px 0;border-bottom:1px solid var(--line)">
+        <b>${esc(r.name)}</b><br>
+        <span class="muted" style="line-height:1.7">${r.exercises.map(e => `${esc(e.name)} <span class="faint num">${e.sets}×${e.repsMin}–${e.repsMax}</span>${e.perSide?' <span class="chip side">por lado</span>':''}${e.superset?' <span class="chip ss">superset</span>':''}`).join('<br>')}</span>
+      </div>`).join('')}
+      <button class="btn primary" data-a="addp" style="margin-top:14px">Adicionar às rotinas atuais</button>
+      <button class="btn slim" data-a="repp" style="margin-top:8px">Substituir todo o plano</button>
+      <button class="btn slim" data-a="close" style="margin-top:8px">Cancelar</button>
+      <p class="faint small" style="margin-top:10px">O histórico de treinos nunca é afetado pela importação.</p>`, {
+      close: closeSheet,
+      addp: () => { applyMus(); db.routines.push(...clean); save(); closeSheet(); render(); toast(`${clean.length} rotina(s) adicionada(s)`); },
+      repp: () => { if (confirm('Substituir TODAS as rotinas atuais pelas do arquivo? O histórico não é afetado.')){
+        applyMus(); db.routines = clean; save(); closeSheet(); render(); toast('Plano substituído'); } },
+    });
+  }).catch(() => toast('Arquivo de plano inválido'));
 }
 function vEditRoutine(){
   const r = db.routines.find(x => x.id === route.id);
@@ -987,6 +1401,7 @@ function vEditRoutine(){
         <div class="spread">
           <span class="nm">${esc(e.name)} ${e.perSide?'<span class="chip side">por lado</span>':''} ${e.superset?'<span class="chip ss">superset</span>':''}</span>
           <span class="row" style="gap:5px">
+            <button class="mini" data-a="sub" data-i="${i}" aria-label="substituir">⇄</button>
             <button class="mini vid" data-a="video" data-n="${esc(e.name)}" aria-label="ver demonstração">▶</button>
             <button class="mini" data-a="up" data-i="${i}" aria-label="subir">↑</button>
             <button class="mini" data-a="dn" data-i="${i}" aria-label="descer">↓</button>
@@ -1025,6 +1440,7 @@ function vEditRoutine(){
     back: () => nav('plan'),
     video: el => openVideo(el.dataset.n),
     musx: el => openMuscleSheetEx(el.dataset.n),
+    sub: el => openSubSheet(r.exercises[el.dataset.i].name, {type:'plan', id: r.id, i:+el.dataset.i}),
     up: el => { const i = +el.dataset.i; if (i>0){ [r.exercises[i-1],r.exercises[i]] = [r.exercises[i],r.exercises[i-1]]; commit(); render(); } },
     dn: el => { const i = +el.dataset.i; if (i<r.exercises.length-1){ [r.exercises[i+1],r.exercises[i]] = [r.exercises[i],r.exercises[i+1]]; commit(); render(); } },
     rm: el => { r.exercises.splice(+el.dataset.i,1); commit(); render(); },
@@ -1056,9 +1472,13 @@ function vSettings(){
       <input type="file" id="f-csv" accept=".csv,text/csv" hidden>
     </div>
     <div class="h2">Preferências</div>
-    <div class="card spread">
-      <span>Descanso padrão (s)</span>
-      <input type="number" id="s-rest" value="${db.settings.restDefault}" style="width:80px">
+    <div class="card">
+      <div class="spread" style="margin-bottom:12px">
+        <span>Descanso padrão (s)</span>
+        <input type="number" id="s-rest" value="${db.settings.restDefault}" style="width:80px">
+      </div>
+      <button class="btn slim" data-a="testsnd">🔔 Testar aviso sonoro</button>
+      <p class="faint small" style="margin-top:8px;line-height:1.5">Não ouviu? Verifique a chavinha de silencioso na lateral do iPhone e o volume. Vibração não funciona em web apps no iOS (limitação da Apple).</p>
     </div>
     <div class="h2">Instalação no iPhone</div>
     <div class="card small muted" style="line-height:1.65">
@@ -1066,7 +1486,7 @@ function vSettings(){
     </div>
     <div class="h2">Zona de risco</div>
     <div class="card"><button class="btn danger slim" data-a="wipe">Apagar todos os dados</button></div>
-    <p class="faint small" style="text-align:center;margin-top:6px">PINEAPPLE METHOD v4 · ${db.workouts.length} treinos no aparelho</p>`;
+    <p class="faint small" style="text-align:center;margin-top:6px">PINEAPPLE METHOD v7 · ${db.workouts.length} treinos no aparelho</p>`;
   $('#s-rest').addEventListener('change', () => {
     const v = parseInt($('#s-rest').value,10);
     if (isFinite(v) && v >= 10){ db.settings.restDefault = v; save(); toast('Salvo'); }
@@ -1075,6 +1495,7 @@ function vSettings(){
     exp: exportJSON,
     impjson: () => $('#f-json').click(),
     impcsv: () => $('#f-csv').click(),
+    testsnd: () => { initAudio(); beep(); toast('Tocou o aviso de fim de descanso'); },
     wipe: () => {
       if (confirm('Apagar TODOS os dados (plano, histórico, peso)?') && confirm('Certeza? Não dá para desfazer sem backup.')){
         localStorage.removeItem(KEY); load(); toast('Dados restaurados ao inicial'); nav('home');
@@ -1084,12 +1505,18 @@ function vSettings(){
   $('#f-json').addEventListener('change', ev => importJSON(ev.target.files[0]));
   $('#f-csv').addEventListener('change', ev => importHevy(ev.target.files[0]));
 }
-function exportJSON(){
+async function exportJSON(){
   const d = new Date();
   const blob = new Blob([JSON.stringify(db, null, 1)], {type:'application/json'});
+  const file = new File([blob], `pineapple-backup-${ymd(d)}.json`, {type:'application/json'});
+  // iOS: folha de compartilhar é mais confiável que download em PWA instalada
+  if (navigator.canShare && navigator.canShare({files:[file]})){
+    try { await navigator.share({files:[file], title:'Backup Pineapple'}); return; }
+    catch(e){ if (e && e.name === 'AbortError') return; }
+  }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `pineapple-backup-${ymd(d)}.json`;
+  a.download = file.name;
   a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   toast('Backup gerado');
 }
@@ -1185,5 +1612,5 @@ $$('#tabbar button, #topbar [data-nav]').forEach(b => b.addEventListener('click'
 
 /* ================= boot ================= */
 load();
-if (db.active) nav('workout'); else nav('home');
+if (db.active){ nav('workout'); acquireWake(); } else nav('home');
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
